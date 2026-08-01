@@ -110,12 +110,14 @@ The `Deploy GitHub Pages` workflow publishes the static PWA from `static/`. GitH
 
 The hosted app requests `drive.readonly` only after the user presses **Connect Google Drive**. Its short-lived access token remains within the browser session. It recursively indexes folder `1oEXzLFWZQxgXXvjZUGSErxJze_amg4EJ`, follows Drive shortcuts, and downloads explicitly selected offline files into that browser's Cache Storage.
 
-On GitHub Pages, online playback is routed through the app service worker so Safari can request byte ranges instead of loading an entire recording into memory. A valid Google token is passed to the worker in memory and is never placed in a media URL. The current token is retained in session storage until Google expires it; the prior consent grant is remembered so reconnecting normally does not repeat the full consent flow.
+On GitHub Pages, online playback uses Google Drive's authenticated media endpoint directly. This avoids relying on browser or device-name detection and lets Safari manage streaming and byte ranges itself. The short-lived playback address is never recorded in diagnostics. The current token is retained in session storage until Google expires it; the prior consent grant is remembered so reconnecting normally does not repeat the full consent flow.
 
 “Offline” means a complete media response is stored under the site's origin in browser Cache Storage. The PWA shell is cached separately, allowing an installed Home Screen app to open without the network. Browser storage remains subject to Safari quotas and eviction; native iPhone packaging is the path to guaranteed app-managed downloads.
 
 The library toolbar can download either the selected collection or the complete library, showing per-file progress and confirming the estimated total size first. Playback source selection is synchronous with the user’s tap so iOS Safari retains the media-playback permission while the service worker resolves the online or cached response.
 
-## Version 4 diagnostics
+## Version 5 diagnostics
 
-The public interface displays its version in the header. The **Logs** panel records a privacy-safe event trail for library loading, playback promises, media readiness, Safari media errors, service-worker range responses and offline downloads. It intentionally excludes OAuth tokens and authenticated URLs. On iOS, live playback uses Google Drive's direct HTTPS media endpoint so Safari owns range loading end to end; complete offline files continue to be served from Cache Storage by the service worker.
+The public interface displays its version in the header. The **Logs** panel records a privacy-safe event trail for library loading, playback promises, media readiness, Safari media errors, service-worker range responses and offline downloads. It intentionally excludes OAuth tokens and authenticated URLs. **Share .txt** opens the iPhone share sheet when supported, so the diagnostic file can be sent through WhatsApp or saved to Files. **Repair app cache** refreshes only the PWA shell and preserves downloaded audio.
+
+When the device is online, v5 always uses the direct Drive stream—even if the recording is also marked Offline. The cached copy is selected only when the device is actually offline and a service worker controls the page. This prevents a missing service worker from turning an otherwise playable Drive recording into a false `NotSupportedError`.
