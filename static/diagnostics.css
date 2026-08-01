@@ -1,0 +1,97 @@
+.version-badge {
+  display: inline-flex;
+  margin-left: 7px;
+  padding: 2px 7px;
+  border: 1px solid var(--gold);
+  border-radius: 99px;
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.diagnostics-panel {
+  position: sticky;
+  top: 88px;
+  z-index: 6;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 14px 20px;
+  border: 1px solid #7a4498;
+  border-radius: 0 0 14px 14px;
+  background: #09050df5;
+  box-shadow: 0 12px 30px #000a;
+}
+
+.diagnostics-panel > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.diagnostics-panel span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.diagnostic-actions {
+  margin: 10px 0;
+  justify-content: flex-start !important;
+}
+
+.diagnostics-panel pre {
+  max-height: 260px;
+  overflow: auto;
+  margin: 8px 0 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: #020103;
+  color: #e7c8ff;
+  font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  header {
+    height: auto;
+    min-height: 70px;
+    padding: 9px 16px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  header h1 {
+    font-size: 25px;
+  }
+
+  .header-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto 1fr 1fr;
+  }
+
+  .header-actions button {
+    min-width: 0;
+    padding: 7px 9px;
+    font-size: 12px;
+  }
+
+  .diagnostics-panel {
+    top: 116px;
+    margin: 0 8px;
+    padding: 12px;
+  }
+
+  .diagnostics-panel > div:first-child {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

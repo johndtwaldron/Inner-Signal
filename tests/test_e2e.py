@@ -43,3 +43,12 @@ def test_download_all_caches_the_visible_collection(page: Page, live_server_url)
     page.on("dialog", lambda dialog: dialog.accept())
     page.locator("#download-all").click()
     expect(page.locator("#offline-count")).to_have_text("2")
+
+
+@pytest.mark.e2e
+def test_v4_diagnostics_are_visible(page: Page, live_server_url):
+    page.goto(live_server_url)
+    expect(page.locator("#version-badge")).to_have_text("v4")
+    page.locator("#diagnostics-toggle").click()
+    expect(page.locator("#diagnostics-panel")).to_be_visible()
+    expect(page.locator("#diagnostics-output")).to_contain_text("snapshot")

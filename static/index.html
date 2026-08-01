@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#b4935a">
   <title>Inner Signal</title>
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
   <script src="https://accounts.google.com/gsi/client" async></script>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="styles.css">
@@ -12,12 +14,14 @@
   <link rel="stylesheet" href="offline.css">
   <link rel="stylesheet" href="mobile-fixes.css">
   <link rel="stylesheet" href="player-controls.css">
+  <link rel="stylesheet" href="diagnostics.css">
 </head>
 <body>
   <header>
-    <div><span class="eyebrow">YOUR PRIVATE LISTENING ROOM</span><span id="client-badge" class="client-badge" hidden>MOBILE SAFARI</span><h1>Inner Signal</h1></div>
-    <div><button id="connect-drive" class="primary" hidden>Connect Google Drive</button><button id="reindex" class="ghost">↻ Refresh library</button></div>
+    <div><span class="eyebrow">YOUR PRIVATE LISTENING ROOM</span><span id="client-badge" class="client-badge" hidden>MOBILE SAFARI</span><span id="version-badge" class="version-badge">v4</span><h1>Inner Signal</h1></div>
+    <div class="header-actions"><button id="diagnostics-toggle" class="ghost">Logs</button><button id="connect-drive" class="primary" hidden>Connect Google Drive</button><button id="reindex" class="ghost">↻ Refresh library</button></div>
   </header>
+  <section id="diagnostics-panel" class="diagnostics-panel hidden" aria-live="polite"><div><strong>Inner Signal v4 diagnostics</strong><span>Safe to copy: access tokens are never recorded.</span></div><div class="diagnostic-actions"><button id="copy-diagnostics" class="ghost">Copy diagnostics</button><button id="clear-diagnostics" class="ghost">Clear</button></div><pre id="diagnostics-output">Waiting for events…</pre></section>
   <main>
     <section class="hero">
       <div><p class="kicker">RETURN TO WHAT MATTERS</p><h2>Choose the signal<br>you need today.</h2><p class="intro">Your meditation and hypnosis library, calm and close at hand.</p></div>

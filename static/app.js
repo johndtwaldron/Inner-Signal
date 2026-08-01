@@ -1,5 +1,8 @@
+const APP_VERSION="v4";
 const state={items:[],queue:JSON.parse(localStorage.getItem("inner-signal-queue")||"[]"),current:null,collection:"All",images:[],imageIndex:0,timer:null,shuffle:false,repeat:"off"};
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
+const knownDurations=JSON.parse(localStorage.getItem("inner-signal-durations")||"{}");
+let diagnosticLines=JSON.parse(sessionStorage.getItem("inner-signal-diagnostics")||"[]");
 const ART={"STASYA.KNIGHT.RELAXATION.":"images/stasya-knight-relaxation.png","Meditations":"images/mirror-dance-lodge.jpg"};
 const DEFAULT_ART="images/inner-signal-default.png";
 const OFFLINE_CACHE="inner-signal-offline-v1";
@@ -7,6 +10,8 @@ const HOSTED=location.hostname.endsWith("github.io");
 const YOUTUBE_PLAYLIST="https://youtube.com/playlist?list=PLigOQIYm3Ub9rLYotDp3cBQUYhYlkP3DI&si=Icunyd8kH7N6XGxc";
 const fmt=s=>{if(!Number.isFinite(s))return "—";const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=String(Math.floor(s%60)).padStart(2,"0");return h?`${h}:${String(m).padStart(2,"0")}:${sec}`:`${m}:${sec}`};
 const size=n=>`${(n/1048576).toFixed(1)} MB`;
+function diagnostic(event,data={}){const safe={...data};delete safe.accessToken;delete safe.url;const line=`${new Date().toISOString().slice(11,19)} ${event} ${JSON.stringify(safe)}`;diagnosticLines.push(line);diagnosticLines=diagnosticLines.slice(-120);sessionStorage.setItem("inner-signal-diagnostics",JSON.stringify(diagnosticLines));const output=$("#diagnostics-output");if(output){output.textContent=diagnosticLines.join("\n");output.scrollTop=output.scrollHeight}}
+function diagnosticSnapshot(){diagnostic("snapshot",{version:APP_VERSION,online:navigator.onLine,standalone:Boolean(navigator.standalone),serviceWorker:Boolean(navigator.serviceWorker?.controller),userAgent:navigator.userAgent,items:state.items.length,offline:state.offline?.size||0,current:state.current?.id||null})}
 const artwork=x=>x.cover_url||(x.cover_id&&!HOSTED?`/api/media/${x.cover_id}`:ART[x.collection]||DEFAULT_ART);
 const playable=()=>state.items.filter(x=>x.kind==="audio"||x.kind==="video");
 function showClientBadge(){const ua=navigator.userAgent;const mobileSafari=/iPhone|iPad|iPod/.test(ua)&&/Safari/.test(ua)&&!/CriOS|FxiOS|EdgiOS/.test(ua);const badge=$("#client-badge");if(mobileSafari){badge.hidden=false;badge.textContent=navigator.standalone?"IPHONE · HOME SCREEN":"MOBILE SAFARI"}}
@@ -17,7 +22,7 @@ async function load(refresh=false){
   try{
     if(HOSTED&&!DriveSource.connected){state.items=[];summary.textContent="Reconnect Google Drive to load your private library";$("#connect-drive").textContent="Reconnect Google Drive";renderCollections();renderLibrary();await refreshOffline();return}
     const result=HOSTED?null:(refresh?await fetch("/api/reindex",{method:"POST"}).then(r=>r.json()):null);
-    const data=HOSTED?{items:await DriveSource.scan()} : await fetch("/api/library").then(r=>r.json());state.items=data.items;
+    const data=HOSTED?{items:await DriveSource.scan()} : await fetch("/api/library").then(r=>r.json());state.items=data.items;state.items.forEach(item=>{if(!item.duration_seconds&&knownDurations[item.id])item.duration_seconds=knownDurations[item.id]});
     state.queue=state.queue.filter(id=>state.items.some(x=>x.id===id));
     const aliases=state.items.filter(x=>x.is_alias).length;
     const covers=new Set(state.items.filter(item=>item.cover_id).map(item=>item.collection)).size;
@@ -25,7 +30,7 @@ async function load(refresh=false){
     summary.textContent=`${recordings} recordings · ${aliases} via shortcuts · ${covers} collection covers${refresh?' · updated just now':''}`;
     await refreshOffline();renderCollections();renderLibrary();loadFolderImages();saveQueue();
     if(refresh)button.textContent=`✓ ${result?.indexed??state.items.length} indexed · ${result?.covers??covers} covers`;
-  }catch(error){summary.textContent=HOSTED?"Drive connection expired — tap Reconnect Google Drive":"Refresh failed — check that Drive is available";button.textContent="Try refresh again";if(HOSTED)$("#connect-drive").textContent="Reconnect Google Drive"}
+  }catch(error){diagnostic("library-error",{name:error.name,message:error.message});summary.textContent=HOSTED?"Drive connection expired — tap Reconnect Google Drive":"Refresh failed — check that Drive is available";button.textContent="Try refresh again";if(HOSTED)$("#connect-drive").textContent="Reconnect Google Drive"}
   finally{button.disabled=false;if(refresh)setTimeout(()=>button.textContent="↻ Refresh library",2500)}
 }
 function renderCollections(){
@@ -39,7 +44,7 @@ function renderCollections(){
 function renderLibrary(){
   const query=$("#search").value.toLowerCase();
   const items=playable().filter(x=>(state.collection==="All"||x.collection===state.collection)&&x.title.toLowerCase().includes(query));
-  $("#library").innerHTML=items.length?items.map(x=>`<article class="card" data-testid="media-card"><img class="card-art" src="${artwork(x)}" alt="" loading="lazy"><div class="card-copy"><small>${x.kind==="video"?'MP4 AUDIO':'AUDIO'} · ${x.collection}${x.is_alias?' · SHORTCUT':''}</small><h3>${x.title}</h3><div class="meta">${fmt(x.duration_seconds)} · ${size(x.size_bytes)}</div><div class="tags">${x.tags.map(tag=>`<span>${tag}</span>`).join("")}</div><div class="actions"><button data-add="${x.id}">＋ Queue</button><button data-local="${x.id}">${state.offline?.has(x.id)?'✓ Offline':'↓ Offline'}</button><button class="listen" aria-label="Play ${x.title}" data-play="${x.id}">▶</button></div></div></article>`).join(""):'<p class="empty">No matching recordings.</p>';
+  $("#library").innerHTML=items.length?items.map(x=>`<article class="card" data-testid="media-card"><img class="card-art" src="${artwork(x)}" alt="" loading="lazy"><div class="card-copy"><small>${x.kind==="video"?'MP4 AUDIO':'AUDIO'} · ${x.collection}${x.is_alias?' · SHORTCUT':''}</small><h3>${x.title}</h3><div class="meta">${x.duration_seconds?fmt(x.duration_seconds):'Duration loads on play'} · ${size(x.size_bytes)}</div><div class="tags">${x.tags.map(tag=>`<span>${tag}</span>`).join("")}</div><div class="actions"><button data-add="${x.id}">＋ Queue</button><button data-local="${x.id}">${state.offline?.has(x.id)?'✓ Offline':'↓ Offline'}</button><button class="listen" aria-label="Play ${x.title}" data-play="${x.id}">▶</button></div></div></article>`).join(""):'<p class="empty">No matching recordings.</p>';
   $$('[data-play]').forEach(b=>b.onclick=()=>play(b.dataset.play));$$('[data-add]').forEach(b=>{b.setAttribute("aria-label","Add to queue");b.onclick=()=>add(b.dataset.add)});$$('[data-local]').forEach(b=>b.onclick=()=>toggleOffline(b.dataset.local,b));
 }
 function saveQueue(){localStorage.setItem("inner-signal-queue",JSON.stringify(state.queue));$("#queue-count").textContent=state.queue.length;renderQueue()}
@@ -64,12 +69,13 @@ async function toggleOffline(id,button){
   }catch(error){button.textContent="Retry download"}finally{button.disabled=false}
 }
 async function storeOffline(item,onProgress){
+  diagnostic("offline-download-start",{id:item.id,title:item.title,size:item.size_bytes});
   const cache=await caches.open(OFFLINE_CACHE),url=new URL(`offline/${item.id}`,location.href).href;
   const response=HOSTED?await DriveSource.response(item):await fetch(`/api/media/${item.id}`);if(!response.ok||!response.body)throw new Error("Download failed");
   const total=Number(response.headers.get("content-length"))||item.size_bytes||0,[cacheStream,progressStream]=response.body.tee();
   const saving=cache.put(url,new Response(cacheStream,{status:200,headers:response.headers})),reader=progressStream.getReader();let received=0;
-  while(true){const {done,value}=await reader.read();if(done)break;received+=value.byteLength;onProgress(total?`${Math.min(100,Math.round(received/total*100))}%`:`${size(received)}`)}
-  await saving;state.offline.add(item.id);
+  while(true){const {done,value}=await reader.read();if(done)break;received+=value.byteLength;onProgress(total?`${Math.min(99,Math.round(received/total*100))}%`:`${size(received)}`)}
+  onProgress("Saving…");await saving;state.offline.add(item.id);onProgress("100%");diagnostic("offline-download-complete",{id:item.id,received});
 }
 async function downloadAll(){
   const button=$("#download-all"),items=playable().filter(x=>(state.collection==="All"||x.collection===state.collection)&&!state.offline.has(x.id));
@@ -77,8 +83,8 @@ async function downloadAll(){
   const total=items.reduce((sum,item)=>sum+(item.size_bytes||0),0),label=state.collection==="All"?"the whole library":state.collection;
   if(!confirm(`Download ${items.length} recordings from ${label}? This needs approximately ${size(total)} plus browser overhead.`))return;
   button.disabled=true;if(navigator.storage?.persist)await navigator.storage.persist();let completed=0;
-  try{for(const item of items){await storeOffline(item,progress=>button.textContent=`${completed+1}/${items.length} · ${progress}`);completed+=1}button.textContent=`✓ ${completed} downloaded`}
-  catch(error){button.textContent=`Stopped after ${completed}/${items.length} — tap to retry`}
+  try{for(const item of items){await storeOffline(item,progress=>button.textContent=`${completed+1}/${items.length} · ${progress}`);completed+=1;await refreshOffline();renderLibrary()}button.textContent=`✓ ${completed} downloaded`}
+  catch(error){diagnostic("bulk-download-error",{name:error.name,message:error.message,completed,total:items.length});button.textContent=`Stopped after ${completed}/${items.length} — tap to retry`}
   finally{button.disabled=false;await refreshOffline();renderLibrary();setTimeout(renderCollections,2500)}
 }
 function renderOffline(){
@@ -93,11 +99,13 @@ async function updateStorage(){
 }
 function play(id){
   const item=state.items.find(x=>x.id===id);if(!item)return;const el=$("#audio");el.pause();if(!HOSTED)el.src=`/api/media/${id}`;state.current={id,el};
-  if(HOSTED){try{el.src=state.offline.has(id)?new URL(`offline/${id}`,location.href).href:DriveSource.streamUrl(item)}catch(error){$("#drive-status").textContent=error.message;$("#connect-drive").textContent="Reconnect Google Drive";return}}
+  const source=state.offline.has(id)?"offline":HOSTED&&/iPhone|iPad|iPod/.test(navigator.userAgent)?"drive-direct-ios":HOSTED?"drive-worker":"local-api";diagnostic("play-tap",{id,title:item.title,kind:item.kind,mime:item.mime_type,size:item.size_bytes,source,serviceWorker:Boolean(navigator.serviceWorker?.controller)});
+  if(HOSTED){try{el.src=state.offline.has(id)?new URL(`offline/${id}`,location.href).href:DriveSource.streamUrl(item)}catch(error){diagnostic("source-error",{name:error.name,message:error.message});$("#drive-status").textContent=error.message;$("#connect-drive").textContent="Reconnect Google Drive";return}}
   $("#now-title").textContent=item.title;$("#player").classList.remove("hidden");$("#play").textContent="❚❚";$(".cover").style.backgroundImage=`url('${artwork(item)}')`;
   $("#show-player").classList.add("hidden");
-  el.load();el.play().catch(error=>{$("#play").textContent="▶";$("#drive-status").textContent=`Playback was blocked: ${error.message}. Tap Play once more.`});
-  el.ontimeupdate=()=>{$("#elapsed").textContent=fmt(el.currentTime);$("#duration").textContent=fmt(el.duration);$("#progress").value=el.duration?el.currentTime/el.duration*100:0};el.onended=trackEnded;el.onerror=()=>{$("#play").textContent="▶";if(HOSTED)$("#drive-status").textContent="Safari could not play this format or the Drive connection expired. Try reconnecting, or download it Offline first."};
+  el.onloadstart=()=>diagnostic("media-loadstart",{source});el.onloadedmetadata=()=>{diagnostic("media-metadata",{duration:el.duration,readyState:el.readyState,networkState:el.networkState});if(Number.isFinite(el.duration)){item.duration_seconds=el.duration;knownDurations[item.id]=el.duration;localStorage.setItem("inner-signal-durations",JSON.stringify(knownDurations));$("#duration").textContent=fmt(el.duration);renderLibrary()}};el.oncanplay=()=>diagnostic("media-canplay",{readyState:el.readyState});el.onplaying=()=>diagnostic("media-playing",{currentTime:el.currentTime});el.onwaiting=()=>diagnostic("media-waiting",{readyState:el.readyState,networkState:el.networkState});el.onstalled=()=>diagnostic("media-stalled",{readyState:el.readyState,networkState:el.networkState});
+  el.load();el.play().then(()=>diagnostic("play-promise-resolved",{})).catch(error=>{diagnostic("play-promise-rejected",{name:error.name,message:error.message,code:el.error?.code||null,readyState:el.readyState,networkState:el.networkState});$("#play").textContent="▶";$("#drive-status").textContent=`Playback was blocked: ${error.message}. Open Logs and copy the diagnostics.`});
+  el.ontimeupdate=()=>{$("#elapsed").textContent=fmt(el.currentTime);$("#duration").textContent=fmt(el.duration);$("#progress").value=el.duration?el.currentTime/el.duration*100:0};el.onended=()=>{diagnostic("media-ended",{currentTime:el.currentTime});trackEnded()};el.onerror=()=>{diagnostic("media-error",{code:el.error?.code||null,message:el.error?.message||"unknown",readyState:el.readyState,networkState:el.networkState});$("#play").textContent="▶";if(HOSTED)$("#drive-status").textContent="Safari could not play this source. Open Logs and copy the diagnostics."};
 }
 function playbackSequence(){if(state.current&&state.queue.includes(state.current.id))return state.queue;return playable().map(x=>x.id)}
 function stepTrack(delta){const sequence=playbackSequence();if(!sequence.length)return;if(state.shuffle){const choices=sequence.filter(id=>id!==state.current?.id);play(choices[Math.floor(Math.random()*choices.length)]||sequence[0]);return}const currentIndex=state.current?sequence.indexOf(state.current.id):-1;const start=currentIndex<0?(delta>0?-1:0):currentIndex;play(sequence[(start+delta+sequence.length)%sequence.length])}
@@ -120,5 +128,7 @@ $("#search").oninput=renderLibrary;$("#clear-queue").onclick=()=>{state.queue=[]
 const driveButton=$("#connect-drive");if(HOSTED){driveButton.hidden=false;if(DriveSource.connected)driveButton.textContent="✓ Drive connected";driveButton.onclick=async()=>{driveButton.disabled=true;driveButton.textContent="Connecting…";try{await DriveSource.connect();driveButton.textContent="✓ Drive connected";$("#drive-status").textContent="Drive permission is remembered. Google may require a quick token renewal after roughly one hour.";await load(true)}catch(error){driveButton.textContent="Try Google Drive again";$("#drive-status").textContent=error.message}finally{driveButton.disabled=false}}}
 $("#play").onclick=()=>{if(!state.current)return;const e=state.current.el;if(e.paused){e.play();$("#play").textContent="❚❚"}else{e.pause();$("#play").textContent="▶"}};$("#progress").oninput=e=>{const el=state.current?.el;if(el?.duration)el.currentTime=el.duration*e.target.value/100};
 $("#close-player").onclick=()=>{$("#player").classList.add("hidden");if(state.current)$("#show-player").classList.remove("hidden")};$("#show-player").onclick=()=>{$("#show-player").classList.add("hidden");$("#player").classList.remove("hidden")};
+$("#version-badge").textContent=APP_VERSION;$("#diagnostics-toggle").onclick=()=>{$("#diagnostics-panel").classList.toggle("hidden");diagnosticSnapshot()};$("#copy-diagnostics").onclick=async()=>{diagnosticSnapshot();await navigator.clipboard.writeText(diagnosticLines.join("\n"));$("#copy-diagnostics").textContent="✓ Copied";setTimeout(()=>$("#copy-diagnostics").textContent="Copy diagnostics",1600)};$("#clear-diagnostics").onclick=()=>{diagnosticLines=[];sessionStorage.removeItem("inner-signal-diagnostics");$("#diagnostics-output").textContent="Diagnostics cleared."};
+window.addEventListener("error",event=>diagnostic("window-error",{message:event.message,filename:event.filename?.split("/").pop(),line:event.lineno}));window.addEventListener("unhandledrejection",event=>diagnostic("promise-error",{message:event.reason?.message||String(event.reason)}));window.addEventListener("online",()=>diagnostic("network-online",{}));window.addEventListener("offline",()=>diagnostic("network-offline",{}));navigator.serviceWorker?.addEventListener("message",event=>{if(event.data?.type==="DIAGNOSTIC")diagnostic(`worker-${event.data.event}`,event.data.data||{})});
 $("#image-input").onchange=e=>{state.images.push(...[...e.target.files].map(URL.createObjectURL));setImage()};$("#prev-image").onclick=()=>stepImage(-1);$("#next-image").onclick=()=>stepImage(1);$("#toggle-slideshow").onclick=toggleSlideshow;
-if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");showClientBadge();setupYouTube();saveQueue();load().catch(()=>{$("#summary").textContent="Library unavailable"});
+if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");diagnostic("app-start",{version:APP_VERSION,online:navigator.onLine,userAgent:navigator.userAgent});showClientBadge();setupYouTube();saveQueue();load().catch(error=>{diagnostic("startup-error",{message:error.message});$("#summary").textContent="Library unavailable"});
