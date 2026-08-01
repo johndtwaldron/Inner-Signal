@@ -3,10 +3,11 @@ const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 const ART={"STASYA.KNIGHT.RELAXATION.":"images/stasya-knight-relaxation.png","Meditations":"images/mirror-dance-lodge.jpg"};
 const DEFAULT_ART="images/inner-signal-default.png";
 const OFFLINE_CACHE="inner-signal-offline-v1";
+const HOSTED=location.hostname.endsWith("github.io");
 const YOUTUBE_PLAYLIST="https://youtube.com/playlist?list=PLigOQIYm3Ub9rLYotDp3cBQUYhYlkP3DI&si=Icunyd8kH7N6XGxc";
 const fmt=s=>{if(!Number.isFinite(s))return "—";const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=String(Math.floor(s%60)).padStart(2,"0");return h?`${h}:${String(m).padStart(2,"0")}:${sec}`:`${m}:${sec}`};
 const size=n=>`${(n/1048576).toFixed(1)} MB`;
-const artwork=x=>x.cover_id?`/api/media/${x.cover_id}`:ART[x.collection]||DEFAULT_ART;
+const artwork=x=>x.cover_url||(x.cover_id&&!HOSTED?`/api/media/${x.cover_id}`:ART[x.collection]||DEFAULT_ART);
 const playable=()=>state.items.filter(x=>x.kind==="audio"||x.kind==="video");
 function showClientBadge(){const ua=navigator.userAgent;const mobileSafari=/iPhone|iPad|iPod/.test(ua)&&/Safari/.test(ua)&&!/CriOS|FxiOS|EdgiOS/.test(ua);const badge=$("#client-badge");if(mobileSafari){badge.hidden=false;badge.textContent=navigator.standalone?"IPHONE · HOME SCREEN":"MOBILE SAFARI"}}
 
@@ -14,14 +15,16 @@ async function load(refresh=false){
   const button=$("#reindex"),summary=$("#summary");
   if(refresh){button.disabled=true;button.textContent="Refreshing…";summary.textContent="Following shortcuts and reading metadata…"}
   try{
-    const result=refresh?await fetch("/api/reindex",{method:"POST"}).then(r=>r.json()):null;
-    const data=await fetch("/api/library").then(r=>r.json());state.items=data.items;
+    if(HOSTED&&!DriveSource.connected){state.items=[];summary.textContent="Connect Google Drive to load your private library";renderCollections();renderLibrary();await refreshOffline();return}
+    const result=HOSTED?null:(refresh?await fetch("/api/reindex",{method:"POST"}).then(r=>r.json()):null);
+    const data=HOSTED?{items:await DriveSource.scan()} : await fetch("/api/library").then(r=>r.json());state.items=data.items;
     state.queue=state.queue.filter(id=>state.items.some(x=>x.id===id));
     const aliases=state.items.filter(x=>x.is_alias).length;
     const covers=new Set(state.items.filter(item=>item.cover_id).map(item=>item.collection)).size;
-    summary.textContent=`${data.counts.audio+data.counts.video} recordings · ${aliases} via shortcuts · ${covers} collection covers${refresh?' · updated just now':''}`;
+    const recordings=state.items.filter(item=>item.kind==="audio"||item.kind==="video").length;
+    summary.textContent=`${recordings} recordings · ${aliases} via shortcuts · ${covers} collection covers${refresh?' · updated just now':''}`;
     await refreshOffline();renderCollections();renderLibrary();loadFolderImages();saveQueue();
-    if(refresh)button.textContent=`✓ ${result.indexed} indexed · ${result.covers} covers`;
+    if(refresh)button.textContent=`✓ ${result?.indexed??state.items.length} indexed · ${result?.covers??covers} covers`;
   }catch(error){summary.textContent="Refresh failed — check that Drive is available";button.textContent="Try refresh again"}
   finally{button.disabled=false;if(refresh)setTimeout(()=>button.textContent="↻ Refresh library",2500)}
 }
@@ -36,7 +39,7 @@ function renderLibrary(){
   const query=$("#search").value.toLowerCase();
   const items=playable().filter(x=>(state.collection==="All"||x.collection===state.collection)&&x.title.toLowerCase().includes(query));
   $("#library").innerHTML=items.length?items.map(x=>`<article class="card" data-testid="media-card"><img class="card-art" src="${artwork(x)}" alt="" loading="lazy"><div class="card-copy"><small>${x.kind==="video"?'MP4 AUDIO':'AUDIO'} · ${x.collection}${x.is_alias?' · SHORTCUT':''}</small><h3>${x.title}</h3><div class="meta">${fmt(x.duration_seconds)} · ${size(x.size_bytes)}</div><div class="tags">${x.tags.map(tag=>`<span>${tag}</span>`).join("")}</div><div class="actions"><button data-add="${x.id}">＋ Queue</button><button data-local="${x.id}">${state.offline?.has(x.id)?'✓ Offline':'↓ Offline'}</button><button class="listen" aria-label="Play ${x.title}" data-play="${x.id}">▶</button></div></div></article>`).join(""):'<p class="empty">No matching recordings.</p>';
-  $$('[data-play]').forEach(b=>b.onclick=()=>play(b.dataset.play));$$('[data-add]').forEach(b=>b.onclick=()=>add(b.dataset.add));$$('[data-local]').forEach(b=>b.onclick=()=>toggleOffline(b.dataset.local,b));
+  $$('[data-play]').forEach(b=>b.onclick=()=>play(b.dataset.play));$$('[data-add]').forEach(b=>{b.setAttribute("aria-label","Add to queue");b.onclick=()=>add(b.dataset.add)});$$('[data-local]').forEach(b=>b.onclick=()=>toggleOffline(b.dataset.local,b));
 }
 function saveQueue(){localStorage.setItem("inner-signal-queue",JSON.stringify(state.queue));$("#queue-count").textContent=state.queue.length;renderQueue()}
 function add(id){if(!state.queue.includes(id))state.queue.push(id);saveQueue()}
@@ -51,11 +54,11 @@ async function refreshOffline(){
   $("#offline-count").textContent=state.offline.size;renderOffline();await updateStorage();
 }
 async function toggleOffline(id,button){
-  const cache=await caches.open(OFFLINE_CACHE),url=`/api/media/${id}`;
+  const cache=await caches.open(OFFLINE_CACHE),url=new URL(`offline/${id}`,location.href).href;
   if(state.offline.has(id)){await cache.delete(url);state.offline.delete(id);button.textContent="↓ Offline";await refreshOffline();renderLibrary();return}
   button.disabled=true;button.textContent="Starting…";
   try{
-    const response=await fetch(url);if(!response.ok||!response.body)throw new Error("Download failed");
+    const item=state.items.find(x=>x.id===id);const response=HOSTED?await DriveSource.response(item):await fetch(`/api/media/${id}`);if(!response.ok||!response.body)throw new Error("Download failed");
     const total=Number(response.headers.get("content-length"))||state.items.find(x=>x.id===id)?.size_bytes||0;
     const [cacheStream,progressStream]=response.body.tee();
     const saving=cache.put(url,new Response(cacheStream,{status:200,headers:response.headers}));
@@ -74,8 +77,9 @@ async function updateStorage(){
   let usage=offlineBytes,quota=0;if(navigator.storage?.estimate){const estimate=await navigator.storage.estimate();usage=estimate.usage||offlineBytes;quota=estimate.quota||0}
   const percent=quota?Math.min(100,usage/quota*100):0;$("#storage-used").textContent=`${size(offlineBytes)} offline audio · ${size(usage)} app storage`;$("#storage-detail").textContent=quota?`${size(quota)} web-app allowance on this device`:"Storage allowance unavailable";$("#storage-percent").textContent=quota?`${percent.toFixed(2)}%`:"—";$("#storage-bar").style.width=`${percent}%`;
 }
-function play(id){
+async function play(id){
   const item=state.items.find(x=>x.id===id);if(!item)return;const el=$("#audio");el.pause();el.src=`/api/media/${id}`;state.current={id,el};
+  if(HOSTED){const cached=await (await caches.open(OFFLINE_CACHE)).match(new URL(`offline/${id}`,location.href).href);el.src=cached?URL.createObjectURL(await cached.blob()):await DriveSource.objectUrl(item)}
   $("#now-title").textContent=item.title;$("#player").classList.remove("hidden");$("#play").textContent="❚❚";$(".cover").style.backgroundImage=`url('${artwork(item)}')`;
   el.play().catch(()=>{$("#play").textContent="▶"});
   el.ontimeupdate=()=>{$("#elapsed").textContent=fmt(el.currentTime);$("#duration").textContent=fmt(el.duration);$("#progress").value=el.duration?el.currentTime/el.duration*100:0};el.onended=trackEnded;
@@ -94,10 +98,11 @@ function setupYouTube(){const input=$("#youtube-url"),open=$("#open-youtube");in
 function setImage(){const frame=$("#slideshow");if(!state.images.length){frame.innerHTML='<div class="empty">Choose images from your Mac now. Images added to the media folder will also appear here.</div>';return}frame.innerHTML=`<img alt="Slideshow image" src="${state.images[state.imageIndex]}">`}
 function stepImage(delta=1){if(!state.images.length)return;state.imageIndex=(state.imageIndex+delta+state.images.length)%state.images.length;setImage()}
 function toggleSlideshow(){if(state.timer){clearInterval(state.timer);state.timer=null;$("#toggle-slideshow").textContent="Play"}else if(state.images.length){state.timer=setInterval(stepImage,+$("#interval").value*1000);$("#toggle-slideshow").textContent="Pause"}}
-function loadFolderImages(){state.images=[DEFAULT_ART,"/images/mirror-dance-lodge.jpg",...Object.values(ART),...state.items.filter(x=>x.kind==="image").map(x=>`/api/media/${x.id}`),...state.images.filter(x=>x.startsWith("blob:"))];state.images=[...new Set(state.images)];setImage()}
+function loadFolderImages(){state.images=[DEFAULT_ART,"images/mirror-dance-lodge.jpg",...Object.values(ART),...state.items.filter(x=>x.kind==="image").map(x=>x.cover_url||(!HOSTED?`/api/media/${x.id}`:null)).filter(Boolean),...state.images.filter(x=>x.startsWith("blob:"))];state.images=[...new Set(state.images)];setImage()}
 
 $$('.tabs button').forEach(b=>b.onclick=()=>{$$('.tabs button,.view').forEach(x=>x.classList.remove('active'));b.classList.add('active');$(`#${b.dataset.view}-view`).classList.add('active')});
 $("#search").oninput=renderLibrary;$("#clear-queue").onclick=()=>{state.queue=[];saveQueue()};$("#reindex").onclick=()=>load(true);$("#next").onclick=()=>stepTrack(1);$("#previous").onclick=()=>stepTrack(-1);$("#shuffle").onclick=toggleShuffle;$("#repeat").onclick=toggleRepeat;$("#recommend").onclick=recommend;
+const driveButton=$("#connect-drive");if(HOSTED){driveButton.hidden=false;driveButton.onclick=async()=>{driveButton.disabled=true;driveButton.textContent="Connecting…";try{await DriveSource.connect();driveButton.textContent="✓ Drive connected";$("#drive-status").textContent="Read-only access granted for this browser session.";await load(true)}catch(error){driveButton.textContent="Try Google Drive again";$("#drive-status").textContent=error.message}finally{driveButton.disabled=false}}}
 $("#play").onclick=()=>{if(!state.current)return;const e=state.current.el;if(e.paused){e.play();$("#play").textContent="❚❚"}else{e.pause();$("#play").textContent="▶"}};$("#progress").oninput=e=>{const el=state.current?.el;if(el?.duration)el.currentTime=el.duration*e.target.value/100};
 $("#image-input").onchange=e=>{state.images.push(...[...e.target.files].map(URL.createObjectURL));setImage()};$("#prev-image").onclick=()=>stepImage(-1);$("#next-image").onclick=()=>stepImage(1);$("#toggle-slideshow").onclick=toggleSlideshow;
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");showClientBadge();setupYouTube();saveQueue();load().catch(()=>{$("#summary").textContent="Library unavailable"});
