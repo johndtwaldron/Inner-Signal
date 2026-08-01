@@ -35,3 +35,11 @@ def test_player_can_be_hidden_and_reopened(page: Page, live_server_url):
     expect(page.locator("#show-player")).to_be_visible()
     page.locator("#show-player").click()
     expect(page.locator("#player")).to_be_visible()
+
+
+@pytest.mark.e2e
+def test_download_all_caches_the_visible_collection(page: Page, live_server_url):
+    page.goto(live_server_url)
+    page.on("dialog", lambda dialog: dialog.accept())
+    page.locator("#download-all").click()
+    expect(page.locator("#offline-count")).to_have_text("2")

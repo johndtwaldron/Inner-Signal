@@ -55,10 +55,10 @@ const DriveSource = (() => {
     });
   }
 
-  async function shareTokenWithWorker() {
+  function shareTokenWithWorker() {
     if (!accessToken || !("serviceWorker" in navigator)) return;
-    const registration = await navigator.serviceWorker.ready;
-    (navigator.serviceWorker.controller || registration.active)?.postMessage({type: "DRIVE_TOKEN", accessToken});
+    navigator.serviceWorker.controller?.postMessage({type: "DRIVE_TOKEN", accessToken});
+    navigator.serviceWorker.ready.then(registration => registration.active?.postMessage({type: "DRIVE_TOKEN", accessToken}));
   }
 
   function saveToken(response) {
@@ -168,11 +168,11 @@ const DriveSource = (() => {
     return url;
   }
 
-  async function streamUrl(item) {
+  function streamUrl(item) {
     if (!accessToken || expiresAt <= Date.now()) { clearToken(); throw new Error("Google Drive needs to reconnect"); }
-    await shareTokenWithWorker();
-    if (navigator.serviceWorker?.controller) return new URL(`drive-media/${item.source_id}`, location.href).href;
-    return objectUrl(item);
+    if (!navigator.serviceWorker?.controller) throw new Error("Inner Signal updated — refresh this page once before playing");
+    shareTokenWithWorker();
+    return new URL(`drive-media/${item.source_id}`, location.href).href;
   }
 
   async function scan() {
