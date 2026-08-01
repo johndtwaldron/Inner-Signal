@@ -115,3 +115,7 @@ On GitHub Pages, online playback is routed through the app service worker so Saf
 “Offline” means a complete media response is stored under the site's origin in browser Cache Storage. The PWA shell is cached separately, allowing an installed Home Screen app to open without the network. Browser storage remains subject to Safari quotas and eviction; native iPhone packaging is the path to guaranteed app-managed downloads.
 
 The library toolbar can download either the selected collection or the complete library, showing per-file progress and confirming the estimated total size first. Playback source selection is synchronous with the user’s tap so iOS Safari retains the media-playback permission while the service worker resolves the online or cached response.
+
+## Version 4 diagnostics
+
+The public interface displays its version in the header. The **Logs** panel records a privacy-safe event trail for library loading, playback promises, media readiness, Safari media errors, service-worker range responses and offline downloads. It intentionally excludes OAuth tokens and authenticated URLs. On iOS, live playback uses Google Drive's direct HTTPS media endpoint so Safari owns range loading end to end; complete offline files continue to be served from Cache Storage by the service worker.
