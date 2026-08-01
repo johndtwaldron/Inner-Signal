@@ -34,6 +34,7 @@ function renderCollections(){
   $$('[data-collection]').forEach(b=>b.onclick=()=>{state.collection=b.dataset.collection;renderCollections();renderLibrary()});
   const query=state.collection==="All"?"meditation affirmation hypnosis cover art":`${state.collection} meditation album artwork`;
   $("#art-search").href=`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
+  const count=playable().filter(x=>state.collection==="All"||x.collection===state.collection).length;$("#download-all").textContent=`↓ ${state.collection==="All"?'All':'This collection'} offline · ${count}`;
 }
 function renderLibrary(){
   const query=$("#search").value.toLowerCase();
@@ -59,14 +60,26 @@ async function toggleOffline(id,button){
   button.disabled=true;button.textContent="Starting…";
   try{
     if(navigator.storage?.persist)await navigator.storage.persist();
-    const item=state.items.find(x=>x.id===id);const response=HOSTED?await DriveSource.response(item):await fetch(`/api/media/${id}`);if(!response.ok||!response.body)throw new Error("Download failed");
-    const total=Number(response.headers.get("content-length"))||state.items.find(x=>x.id===id)?.size_bytes||0;
-    const [cacheStream,progressStream]=response.body.tee();
-    const saving=cache.put(url,new Response(cacheStream,{status:200,headers:response.headers}));
-    const reader=progressStream.getReader();let received=0;
-    while(true){const {done,value}=await reader.read();if(done)break;received+=value.byteLength;button.textContent=total?`${Math.min(100,Math.round(received/total*100))}%`:`${size(received)}`}
-    await saving;state.offline.add(id);button.textContent="✓ Offline";await refreshOffline();renderLibrary();
+    const item=state.items.find(x=>x.id===id);await storeOffline(item,progress=>button.textContent=progress);button.textContent="✓ Offline";await refreshOffline();renderLibrary();
   }catch(error){button.textContent="Retry download"}finally{button.disabled=false}
+}
+async function storeOffline(item,onProgress){
+  const cache=await caches.open(OFFLINE_CACHE),url=new URL(`offline/${item.id}`,location.href).href;
+  const response=HOSTED?await DriveSource.response(item):await fetch(`/api/media/${item.id}`);if(!response.ok||!response.body)throw new Error("Download failed");
+  const total=Number(response.headers.get("content-length"))||item.size_bytes||0,[cacheStream,progressStream]=response.body.tee();
+  const saving=cache.put(url,new Response(cacheStream,{status:200,headers:response.headers})),reader=progressStream.getReader();let received=0;
+  while(true){const {done,value}=await reader.read();if(done)break;received+=value.byteLength;onProgress(total?`${Math.min(100,Math.round(received/total*100))}%`:`${size(received)}`)}
+  await saving;state.offline.add(item.id);
+}
+async function downloadAll(){
+  const button=$("#download-all"),items=playable().filter(x=>(state.collection==="All"||x.collection===state.collection)&&!state.offline.has(x.id));
+  if(!items.length){button.textContent="✓ Everything is offline";return}
+  const total=items.reduce((sum,item)=>sum+(item.size_bytes||0),0),label=state.collection==="All"?"the whole library":state.collection;
+  if(!confirm(`Download ${items.length} recordings from ${label}? This needs approximately ${size(total)} plus browser overhead.`))return;
+  button.disabled=true;if(navigator.storage?.persist)await navigator.storage.persist();let completed=0;
+  try{for(const item of items){await storeOffline(item,progress=>button.textContent=`${completed+1}/${items.length} · ${progress}`);completed+=1}button.textContent=`✓ ${completed} downloaded`}
+  catch(error){button.textContent=`Stopped after ${completed}/${items.length} — tap to retry`}
+  finally{button.disabled=false;await refreshOffline();renderLibrary();setTimeout(renderCollections,2500)}
 }
 function renderOffline(){
   if(!state.items.length)return;const items=[...state.offline].map(id=>state.items.find(x=>x.id===id)).filter(Boolean);
@@ -78,12 +91,12 @@ async function updateStorage(){
   let usage=offlineBytes,quota=0;if(navigator.storage?.estimate){const estimate=await navigator.storage.estimate();usage=estimate.usage||offlineBytes;quota=estimate.quota||0}
   const persistent=navigator.storage?.persisted?await navigator.storage.persisted():false;const percent=quota?Math.min(100,usage/quota*100):0;$("#storage-used").textContent=`${size(offlineBytes)} offline audio · ${size(usage)} app storage`;$("#storage-detail").textContent=quota?`${size(quota)} browser allowance · ${persistent?'durable storage granted':'best-effort storage'}`:"Storage allowance unavailable";$("#storage-percent").textContent=quota?`${percent.toFixed(2)}%`:"—";$("#storage-bar").style.width=`${percent}%`;
 }
-async function play(id){
+function play(id){
   const item=state.items.find(x=>x.id===id);if(!item)return;const el=$("#audio");el.pause();if(!HOSTED)el.src=`/api/media/${id}`;state.current={id,el};
-  if(HOSTED){try{const offlineUrl=new URL(`offline/${id}`,location.href).href;const cached=await (await caches.open(OFFLINE_CACHE)).match(offlineUrl);el.src=cached?offlineUrl:await DriveSource.streamUrl(item)}catch(error){$("#drive-status").textContent=error.message;$("#connect-drive").textContent="Reconnect Google Drive";return}}
+  if(HOSTED){try{el.src=state.offline.has(id)?new URL(`offline/${id}`,location.href).href:DriveSource.streamUrl(item)}catch(error){$("#drive-status").textContent=error.message;$("#connect-drive").textContent="Reconnect Google Drive";return}}
   $("#now-title").textContent=item.title;$("#player").classList.remove("hidden");$("#play").textContent="❚❚";$(".cover").style.backgroundImage=`url('${artwork(item)}')`;
   $("#show-player").classList.add("hidden");
-  el.play().catch(()=>{$("#play").textContent="▶"});
+  el.load();el.play().catch(error=>{$("#play").textContent="▶";$("#drive-status").textContent=`Playback was blocked: ${error.message}. Tap Play once more.`});
   el.ontimeupdate=()=>{$("#elapsed").textContent=fmt(el.currentTime);$("#duration").textContent=fmt(el.duration);$("#progress").value=el.duration?el.currentTime/el.duration*100:0};el.onended=trackEnded;el.onerror=()=>{$("#play").textContent="▶";if(HOSTED)$("#drive-status").textContent="Safari could not play this format or the Drive connection expired. Try reconnecting, or download it Offline first."};
 }
 function playbackSequence(){if(state.current&&state.queue.includes(state.current.id))return state.queue;return playable().map(x=>x.id)}
@@ -103,7 +116,7 @@ function toggleSlideshow(){if(state.timer){clearInterval(state.timer);state.time
 function loadFolderImages(){state.images=[DEFAULT_ART,"images/mirror-dance-lodge.jpg",...Object.values(ART),...state.items.filter(x=>x.kind==="image").map(x=>x.cover_url||(!HOSTED?`/api/media/${x.id}`:null)).filter(Boolean),...state.images.filter(x=>x.startsWith("blob:"))];state.images=[...new Set(state.images)];setImage()}
 
 $$('.tabs button').forEach(b=>b.onclick=()=>{$$('.tabs button,.view').forEach(x=>x.classList.remove('active'));b.classList.add('active');$(`#${b.dataset.view}-view`).classList.add('active')});
-$("#search").oninput=renderLibrary;$("#clear-queue").onclick=()=>{state.queue=[];saveQueue()};$("#reindex").onclick=()=>load(true);$("#next").onclick=()=>stepTrack(1);$("#previous").onclick=()=>stepTrack(-1);$("#shuffle").onclick=toggleShuffle;$("#repeat").onclick=toggleRepeat;$("#recommend").onclick=recommend;
+$("#search").oninput=renderLibrary;$("#clear-queue").onclick=()=>{state.queue=[];saveQueue()};$("#reindex").onclick=()=>load(true);$("#download-all").onclick=downloadAll;$("#next").onclick=()=>stepTrack(1);$("#previous").onclick=()=>stepTrack(-1);$("#shuffle").onclick=toggleShuffle;$("#repeat").onclick=toggleRepeat;$("#recommend").onclick=recommend;
 const driveButton=$("#connect-drive");if(HOSTED){driveButton.hidden=false;if(DriveSource.connected)driveButton.textContent="✓ Drive connected";driveButton.onclick=async()=>{driveButton.disabled=true;driveButton.textContent="Connecting…";try{await DriveSource.connect();driveButton.textContent="✓ Drive connected";$("#drive-status").textContent="Drive permission is remembered. Google may require a quick token renewal after roughly one hour.";await load(true)}catch(error){driveButton.textContent="Try Google Drive again";$("#drive-status").textContent=error.message}finally{driveButton.disabled=false}}}
 $("#play").onclick=()=>{if(!state.current)return;const e=state.current.el;if(e.paused){e.play();$("#play").textContent="❚❚"}else{e.pause();$("#play").textContent="▶"}};$("#progress").oninput=e=>{const el=state.current?.el;if(el?.duration)el.currentTime=el.duration*e.target.value/100};
 $("#close-player").onclick=()=>{$("#player").classList.add("hidden");if(state.current)$("#show-player").classList.remove("hidden")};$("#show-player").onclick=()=>{$("#show-player").classList.add("hidden");$("#player").classList.remove("hidden")};
