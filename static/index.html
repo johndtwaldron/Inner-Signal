@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="enhancements.css">
   <link rel="stylesheet" href="offline.css">
   <link rel="stylesheet" href="mobile-fixes.css">
+  <link rel="stylesheet" href="player-controls.css">
 </head>
 <body>
   <header>
@@ -45,7 +46,7 @@
       <div class="storage-panel">
         <div class="storage-heading"><div><strong id="storage-used">Checking storage…</strong><span id="storage-detail">Browser storage allowance</span></div><span id="storage-percent">—</span></div>
         <div class="storage-meter"><span id="storage-bar"></span></div>
-        <p id="storage-note">This Mac prototype reports the web app’s storage allowance. The native iPhone version will report the app’s exact files and their percentage of total device capacity.</p>
+        <p id="storage-note"><strong>What “Offline” means:</strong> Inner Signal saves a private copy inside Safari’s storage on this device. Add this site to your iPhone Home Screen for the most app-like and durable experience. Safari can still remove website data if the phone is short of space; a future native app can guarantee app-managed downloads.</p>
       </div>
       <div class="source-panel"><div><span class="eyebrow">CANONICAL CLOUD SOURCE</span><h3>Google Drive meditation folder</h3><p id="drive-status">On iPhone, sign in to list this folder and download selected files into private browser storage.</p></div><a class="ghost" href="https://drive.google.com/drive/folders/1oEXzLFWZQxgXXvjZUGSErxJze_amg4EJ?usp=drive_link" target="_blank" rel="noreferrer">Open Drive folder</a></div>
       <div id="offline-list" class="queue"></div>
@@ -57,11 +58,13 @@
     </section>
   </main>
   <footer id="player" class="player hidden">
+    <button id="close-player" class="close-player" aria-label="Hide player" title="Hide player">×</button>
     <div class="now"><span class="cover">◌</span><div><small>NOW PLAYING</small><strong id="now-title">—</strong></div></div>
     <div class="transport"><button id="shuffle" aria-label="Shuffle off" title="Shuffle">⇄</button><button id="previous" aria-label="Previous">←</button><button id="play" class="play" aria-label="Play or pause">▶</button><button id="next" aria-label="Next">→</button><button id="repeat" aria-label="Repeat off" title="Repeat">↻</button></div>
     <div class="time"><span id="elapsed">0:00</span><input id="progress" aria-label="Playback position" type="range" min="0" max="100" value="0"><span id="duration">0:00</span></div>
     <audio id="audio" preload="metadata"></audio>
   </footer>
+  <button id="show-player" class="show-player hidden" aria-label="Show player">♫ Now playing</button>
   <script src="drive-source.js" defer></script>
   <script src="app.js" defer></script>
 </body>

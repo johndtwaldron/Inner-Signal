@@ -8,9 +8,20 @@ const DriveSource = (() => {
   const VIDEO = new Set(["mp4", "m4v", "mov", "webm"]);
   const IMAGE = new Set(["jpg", "jpeg", "png", "webp", "avif", "gif", "heic"]);
   const FORMAT_PRIORITY = {png: 0, jpg: 1, jpeg: 1, webp: 2, avif: 3, heic: 4, gif: 5};
+  const TOKEN_KEY = "inner-signal-drive-token";
+  const AUTHORIZED_KEY = "inner-signal-drive-authorized";
   const objectUrls = new Map();
   let accessToken = null;
+  let expiresAt = 0;
   let tokenClient = null;
+
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(TOKEN_KEY) || "null");
+    if (saved?.accessToken && saved.expiresAt > Date.now() + 60000) {
+      accessToken = saved.accessToken;
+      expiresAt = saved.expiresAt;
+    }
+  } catch (_) { sessionStorage.removeItem(TOKEN_KEY); }
 
   const extension = name => name.includes(".") ? name.split(".").pop().toLowerCase() : "";
   const cleanTitle = name => name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ").replace(/\s+/g, " ").trim();
@@ -44,6 +55,26 @@ const DriveSource = (() => {
     });
   }
 
+  async function shareTokenWithWorker() {
+    if (!accessToken || !("serviceWorker" in navigator)) return;
+    const registration = await navigator.serviceWorker.ready;
+    (navigator.serviceWorker.controller || registration.active)?.postMessage({type: "DRIVE_TOKEN", accessToken});
+  }
+
+  function saveToken(response) {
+    accessToken = response.access_token;
+    expiresAt = Date.now() + Math.max(60, Number(response.expires_in || 3600) - 60) * 1000;
+    sessionStorage.setItem(TOKEN_KEY, JSON.stringify({accessToken, expiresAt}));
+    localStorage.setItem(AUTHORIZED_KEY, "true");
+    shareTokenWithWorker();
+  }
+
+  function clearToken() {
+    accessToken = null;
+    expiresAt = 0;
+    sessionStorage.removeItem(TOKEN_KEY);
+  }
+
   async function connect() {
     await ready();
     return new Promise((resolve, reject) => {
@@ -52,22 +83,23 @@ const DriveSource = (() => {
         scope: SCOPE,
         callback: response => {
           if (response.error) { reject(new Error(response.error)); return; }
-          accessToken = response.access_token;
+          saveToken(response);
           resolve(response);
         },
         error_callback: error => reject(new Error(error.type || "Google sign-in closed")),
       });
-      tokenClient.requestAccessToken({prompt: accessToken ? "" : "consent"});
+      const returning = localStorage.getItem(AUTHORIZED_KEY) === "true";
+      tokenClient.requestAccessToken({prompt: accessToken || returning ? "" : "consent"});
     });
   }
 
   async function driveFetch(path, options = {}) {
-    if (!accessToken) throw new Error("Google Drive is not connected");
+    if (!accessToken || expiresAt <= Date.now()) { clearToken(); throw new Error("Google Drive needs to reconnect"); }
     const response = await fetch(`https://www.googleapis.com/drive/v3/${path}`, {
       ...options,
       headers: {...options.headers, Authorization: `Bearer ${accessToken}`},
     });
-    if (response.status === 401) accessToken = null;
+    if (response.status === 401) clearToken();
     if (!response.ok) throw new Error(`Google Drive returned ${response.status}`);
     return response;
   }
@@ -136,6 +168,13 @@ const DriveSource = (() => {
     return url;
   }
 
+  async function streamUrl(item) {
+    if (!accessToken || expiresAt <= Date.now()) { clearToken(); throw new Error("Google Drive needs to reconnect"); }
+    await shareTokenWithWorker();
+    if (navigator.serviceWorker?.controller) return new URL(`drive-media/${item.source_id}`, location.href).href;
+    return objectUrl(item);
+  }
+
   async function scan() {
     const items = await walk(ROOT_FOLDER_ID);
     const images = new Map();
@@ -158,5 +197,6 @@ const DriveSource = (() => {
     return items;
   }
 
-  return {connect, scan, response, objectUrl, get connected() { return Boolean(accessToken); }};
+  if (accessToken) shareTokenWithWorker();
+  return {connect, scan, response, objectUrl, streamUrl, get connected() { return Boolean(accessToken && expiresAt > Date.now()); }};
 })();

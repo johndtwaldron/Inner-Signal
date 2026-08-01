@@ -108,4 +108,8 @@ A private, local-first listening room. The repository contains application code 
 
 The `Deploy GitHub Pages` workflow publishes the static PWA from `static/`. GitHub Pages cannot run FastAPI, so the hosted build uses Google Identity Services and the Drive REST API directly from the browser. The OAuth client ID is intentionally public; client secrets, access tokens, refresh tokens and personal audio files must never be committed.
 
-The hosted app requests `drive.readonly` only after the user presses **Connect Google Drive**. Its short-lived access token remains in memory. It recursively indexes folder `1oEXzLFWZQxgXXvjZUGSErxJze_amg4EJ`, follows Drive shortcuts, and downloads explicitly selected offline files into that browser's Cache Storage.
+The hosted app requests `drive.readonly` only after the user presses **Connect Google Drive**. Its short-lived access token remains within the browser session. It recursively indexes folder `1oEXzLFWZQxgXXvjZUGSErxJze_amg4EJ`, follows Drive shortcuts, and downloads explicitly selected offline files into that browser's Cache Storage.
+
+On GitHub Pages, online playback is routed through the app service worker so Safari can request byte ranges instead of loading an entire recording into memory. A valid Google token is passed to the worker in memory and is never placed in a media URL. The current token is retained in session storage until Google expires it; the prior consent grant is remembered so reconnecting normally does not repeat the full consent flow.
+
+“Offline” means a complete media response is stored under the site's origin in browser Cache Storage. The PWA shell is cached separately, allowing an installed Home Screen app to open without the network. Browser storage remains subject to Safari quotas and eviction; native iPhone packaging is the path to guaranteed app-managed downloads.

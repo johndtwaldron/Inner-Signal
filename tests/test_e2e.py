@@ -23,3 +23,15 @@ def test_next_advances_across_library(page: Page, live_server_url):
     expect(page.locator("#now-title")).to_have_text(first_title)
     page.locator("#next").click()
     expect(page.locator("#now-title")).not_to_have_text(first_title)
+
+
+@pytest.mark.e2e
+def test_player_can_be_hidden_and_reopened(page: Page, live_server_url):
+    page.goto(live_server_url)
+    page.locator('[data-testid="media-card"]').first.locator("[data-play]").click()
+    expect(page.locator("#player")).to_be_visible()
+    page.locator("#close-player").click()
+    expect(page.locator("#player")).to_be_hidden()
+    expect(page.locator("#show-player")).to_be_visible()
+    page.locator("#show-player").click()
+    expect(page.locator("#player")).to_be_visible()

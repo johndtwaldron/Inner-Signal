@@ -15,7 +15,7 @@ async function load(refresh=false){
   const button=$("#reindex"),summary=$("#summary");
   if(refresh){button.disabled=true;button.textContent="Refreshing…";summary.textContent="Following shortcuts and reading metadata…"}
   try{
-    if(HOSTED&&!DriveSource.connected){state.items=[];summary.textContent="Connect Google Drive to load your private library";renderCollections();renderLibrary();await refreshOffline();return}
+    if(HOSTED&&!DriveSource.connected){state.items=[];summary.textContent="Reconnect Google Drive to load your private library";$("#connect-drive").textContent="Reconnect Google Drive";renderCollections();renderLibrary();await refreshOffline();return}
     const result=HOSTED?null:(refresh?await fetch("/api/reindex",{method:"POST"}).then(r=>r.json()):null);
     const data=HOSTED?{items:await DriveSource.scan()} : await fetch("/api/library").then(r=>r.json());state.items=data.items;
     state.queue=state.queue.filter(id=>state.items.some(x=>x.id===id));
@@ -25,7 +25,7 @@ async function load(refresh=false){
     summary.textContent=`${recordings} recordings · ${aliases} via shortcuts · ${covers} collection covers${refresh?' · updated just now':''}`;
     await refreshOffline();renderCollections();renderLibrary();loadFolderImages();saveQueue();
     if(refresh)button.textContent=`✓ ${result?.indexed??state.items.length} indexed · ${result?.covers??covers} covers`;
-  }catch(error){summary.textContent="Refresh failed — check that Drive is available";button.textContent="Try refresh again"}
+  }catch(error){summary.textContent=HOSTED?"Drive connection expired — tap Reconnect Google Drive":"Refresh failed — check that Drive is available";button.textContent="Try refresh again";if(HOSTED)$("#connect-drive").textContent="Reconnect Google Drive"}
   finally{button.disabled=false;if(refresh)setTimeout(()=>button.textContent="↻ Refresh library",2500)}
 }
 function renderCollections(){
@@ -58,6 +58,7 @@ async function toggleOffline(id,button){
   if(state.offline.has(id)){await cache.delete(url);state.offline.delete(id);button.textContent="↓ Offline";await refreshOffline();renderLibrary();return}
   button.disabled=true;button.textContent="Starting…";
   try{
+    if(navigator.storage?.persist)await navigator.storage.persist();
     const item=state.items.find(x=>x.id===id);const response=HOSTED?await DriveSource.response(item):await fetch(`/api/media/${id}`);if(!response.ok||!response.body)throw new Error("Download failed");
     const total=Number(response.headers.get("content-length"))||state.items.find(x=>x.id===id)?.size_bytes||0;
     const [cacheStream,progressStream]=response.body.tee();
@@ -75,14 +76,15 @@ function renderOffline(){
 async function updateStorage(){
   const offlineBytes=[...state.offline].map(id=>state.items.find(x=>x.id===id)?.size_bytes||0).reduce((a,b)=>a+b,0);
   let usage=offlineBytes,quota=0;if(navigator.storage?.estimate){const estimate=await navigator.storage.estimate();usage=estimate.usage||offlineBytes;quota=estimate.quota||0}
-  const percent=quota?Math.min(100,usage/quota*100):0;$("#storage-used").textContent=`${size(offlineBytes)} offline audio · ${size(usage)} app storage`;$("#storage-detail").textContent=quota?`${size(quota)} web-app allowance on this device`:"Storage allowance unavailable";$("#storage-percent").textContent=quota?`${percent.toFixed(2)}%`:"—";$("#storage-bar").style.width=`${percent}%`;
+  const persistent=navigator.storage?.persisted?await navigator.storage.persisted():false;const percent=quota?Math.min(100,usage/quota*100):0;$("#storage-used").textContent=`${size(offlineBytes)} offline audio · ${size(usage)} app storage`;$("#storage-detail").textContent=quota?`${size(quota)} browser allowance · ${persistent?'durable storage granted':'best-effort storage'}`:"Storage allowance unavailable";$("#storage-percent").textContent=quota?`${percent.toFixed(2)}%`:"—";$("#storage-bar").style.width=`${percent}%`;
 }
 async function play(id){
-  const item=state.items.find(x=>x.id===id);if(!item)return;const el=$("#audio");el.pause();el.src=`/api/media/${id}`;state.current={id,el};
-  if(HOSTED){const cached=await (await caches.open(OFFLINE_CACHE)).match(new URL(`offline/${id}`,location.href).href);el.src=cached?URL.createObjectURL(await cached.blob()):await DriveSource.objectUrl(item)}
+  const item=state.items.find(x=>x.id===id);if(!item)return;const el=$("#audio");el.pause();if(!HOSTED)el.src=`/api/media/${id}`;state.current={id,el};
+  if(HOSTED){try{const offlineUrl=new URL(`offline/${id}`,location.href).href;const cached=await (await caches.open(OFFLINE_CACHE)).match(offlineUrl);el.src=cached?offlineUrl:await DriveSource.streamUrl(item)}catch(error){$("#drive-status").textContent=error.message;$("#connect-drive").textContent="Reconnect Google Drive";return}}
   $("#now-title").textContent=item.title;$("#player").classList.remove("hidden");$("#play").textContent="❚❚";$(".cover").style.backgroundImage=`url('${artwork(item)}')`;
+  $("#show-player").classList.add("hidden");
   el.play().catch(()=>{$("#play").textContent="▶"});
-  el.ontimeupdate=()=>{$("#elapsed").textContent=fmt(el.currentTime);$("#duration").textContent=fmt(el.duration);$("#progress").value=el.duration?el.currentTime/el.duration*100:0};el.onended=trackEnded;
+  el.ontimeupdate=()=>{$("#elapsed").textContent=fmt(el.currentTime);$("#duration").textContent=fmt(el.duration);$("#progress").value=el.duration?el.currentTime/el.duration*100:0};el.onended=trackEnded;el.onerror=()=>{$("#play").textContent="▶";if(HOSTED)$("#drive-status").textContent="Safari could not play this format or the Drive connection expired. Try reconnecting, or download it Offline first."};
 }
 function playbackSequence(){if(state.current&&state.queue.includes(state.current.id))return state.queue;return playable().map(x=>x.id)}
 function stepTrack(delta){const sequence=playbackSequence();if(!sequence.length)return;if(state.shuffle){const choices=sequence.filter(id=>id!==state.current?.id);play(choices[Math.floor(Math.random()*choices.length)]||sequence[0]);return}const currentIndex=state.current?sequence.indexOf(state.current.id):-1;const start=currentIndex<0?(delta>0?-1:0):currentIndex;play(sequence[(start+delta+sequence.length)%sequence.length])}
@@ -102,7 +104,8 @@ function loadFolderImages(){state.images=[DEFAULT_ART,"images/mirror-dance-lodge
 
 $$('.tabs button').forEach(b=>b.onclick=()=>{$$('.tabs button,.view').forEach(x=>x.classList.remove('active'));b.classList.add('active');$(`#${b.dataset.view}-view`).classList.add('active')});
 $("#search").oninput=renderLibrary;$("#clear-queue").onclick=()=>{state.queue=[];saveQueue()};$("#reindex").onclick=()=>load(true);$("#next").onclick=()=>stepTrack(1);$("#previous").onclick=()=>stepTrack(-1);$("#shuffle").onclick=toggleShuffle;$("#repeat").onclick=toggleRepeat;$("#recommend").onclick=recommend;
-const driveButton=$("#connect-drive");if(HOSTED){driveButton.hidden=false;driveButton.onclick=async()=>{driveButton.disabled=true;driveButton.textContent="Connecting…";try{await DriveSource.connect();driveButton.textContent="✓ Drive connected";$("#drive-status").textContent="Read-only access granted for this browser session.";await load(true)}catch(error){driveButton.textContent="Try Google Drive again";$("#drive-status").textContent=error.message}finally{driveButton.disabled=false}}}
+const driveButton=$("#connect-drive");if(HOSTED){driveButton.hidden=false;if(DriveSource.connected)driveButton.textContent="✓ Drive connected";driveButton.onclick=async()=>{driveButton.disabled=true;driveButton.textContent="Connecting…";try{await DriveSource.connect();driveButton.textContent="✓ Drive connected";$("#drive-status").textContent="Drive permission is remembered. Google may require a quick token renewal after roughly one hour.";await load(true)}catch(error){driveButton.textContent="Try Google Drive again";$("#drive-status").textContent=error.message}finally{driveButton.disabled=false}}}
 $("#play").onclick=()=>{if(!state.current)return;const e=state.current.el;if(e.paused){e.play();$("#play").textContent="❚❚"}else{e.pause();$("#play").textContent="▶"}};$("#progress").oninput=e=>{const el=state.current?.el;if(el?.duration)el.currentTime=el.duration*e.target.value/100};
+$("#close-player").onclick=()=>{$("#player").classList.add("hidden");if(state.current)$("#show-player").classList.remove("hidden")};$("#show-player").onclick=()=>{$("#show-player").classList.add("hidden");$("#player").classList.remove("hidden")};
 $("#image-input").onchange=e=>{state.images.push(...[...e.target.files].map(URL.createObjectURL));setImage()};$("#prev-image").onclick=()=>stepImage(-1);$("#next-image").onclick=()=>stepImage(1);$("#toggle-slideshow").onclick=toggleSlideshow;
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");showClientBadge();setupYouTube();saveQueue();load().catch(()=>{$("#summary").textContent="Library unavailable"});
