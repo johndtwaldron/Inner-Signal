@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#b4935a">
+  <title>Inner Signal</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="enhancements.css">
+  <link rel="stylesheet" href="offline.css">
+  <link rel="stylesheet" href="mobile-fixes.css">
+</head>
+<body>
+  <header>
+    <div><span class="eyebrow">YOUR PRIVATE LISTENING ROOM</span><span id="client-badge" class="client-badge" hidden>MOBILE SAFARI</span><h1>Inner Signal</h1></div>
+    <button id="reindex" class="ghost">↻ Refresh library</button>
+  </header>
+  <main>
+    <section class="hero">
+      <div><p class="kicker">RETURN TO WHAT MATTERS</p><h2>Choose the signal<br>you need today.</h2><p class="intro">Your meditation and hypnosis library, calm and close at hand.</p></div>
+      <div class="hero-art"><img src="images/inner-signal-default.png" alt="Purple and gold energy circling a reflective black orb"></div>
+    </section>
+    <nav class="tabs" aria-label="Main views">
+      <button class="active" data-view="library">Library</button><button data-view="guide">Guide me</button><button data-view="queue">Queue <b id="queue-count">0</b></button><button data-view="offline">Offline <b id="offline-count">0</b></button><button data-view="visuals">Visuals</button>
+    </nav>
+    <section id="library-view" class="view active">
+      <div class="toolbar"><label class="search">⌕ <input id="search" type="search" placeholder="Search your library"></label><div class="library-tools"><a id="art-search" class="ghost" href="https://www.google.com/search?tbm=isch&q=meditation+album+art" target="_blank" rel="noreferrer">Find visual ideas</a><div id="summary">Indexing…</div></div></div>
+      <div id="collections" class="chips"></div><div id="library" class="cards" aria-live="polite"></div>
+    </section>
+    <section id="guide-view" class="view">
+      <div class="section-title"><div><span class="eyebrow">LOCAL RECOMMENDATIONS</span><h2>What do you need?</h2></div></div>
+      <div class="guide-panel">
+        <label>Tell Inner Signal how you feel<textarea id="mood" placeholder="I feel wired, anxious and tired. I want to sleep deeply…"></textarea></label>
+        <label>Session length<select id="session-mode"><option value="nap">Nap · about 30 minutes</option><option value="session">Full session · about 1 hour</option><option value="overnight">Overnight · about 8 hours</option></select></label>
+        <button id="recommend" class="primary">Build my queue</button>
+        <p id="recommendation-feedback" class="feedback" aria-live="polite">Recommendations stay on this Mac and use automatically inferred tags.</p>
+      </div>
+      <div class="youtube-panel"><div><span class="eyebrow">YOUTUBE — ONLINE ONLY</span><h3>Your private playlist</h3><p>Paste the playlist link once. It opens in YouTube using whichever Google account is already signed in.</p></div><div class="youtube-controls"><input id="youtube-url" type="url" placeholder="https://www.youtube.com/playlist?list=…"><button id="save-youtube" class="ghost">Save link</button><a id="open-youtube" class="ghost disabled" target="_blank" rel="noreferrer">Open YouTube</a></div></div>
+    </section>
+    <section id="queue-view" class="view"><div class="section-title"><div><span class="eyebrow">NEXT UP</span><h2>Your queue</h2></div><button id="clear-queue" class="ghost">Clear</button></div><div id="queue" class="queue"></div></section>
+    <section id="offline-view" class="view">
+      <div class="section-title"><div><span class="eyebrow">ON THIS DEVICE</span><h2>Offline library</h2></div></div>
+      <div class="storage-panel">
+        <div class="storage-heading"><div><strong id="storage-used">Checking storage…</strong><span id="storage-detail">Browser storage allowance</span></div><span id="storage-percent">—</span></div>
+        <div class="storage-meter"><span id="storage-bar"></span></div>
+        <p id="storage-note">This Mac prototype reports the web app’s storage allowance. The native iPhone version will report the app’s exact files and their percentage of total device capacity.</p>
+      </div>
+      <div class="source-panel"><div><span class="eyebrow">CANONICAL CLOUD SOURCE</span><h3>Google Drive meditation folder</h3><p>On iPhone, sign-in will list this folder and download selected files into app-private storage.</p></div><a class="ghost" href="https://drive.google.com/drive/folders/1oEXzLFWZQxgXXvjZUGSErxJze_amg4EJ?usp=drive_link" target="_blank" rel="noreferrer">Open Drive folder</a></div>
+      <div id="offline-list" class="queue"></div>
+    </section>
+    <section id="visuals-view" class="view">
+      <div class="section-title"><div><span class="eyebrow">VISUAL COMPANION</span><h2>Slideshow</h2></div><label class="upload">Choose images<input id="image-input" type="file" accept="image/*" multiple></label></div>
+      <div class="slideshow" id="slideshow"><div class="empty">Choose images from your Mac now. Images added to the media folder will also appear here.</div></div>
+      <div class="slideshow-controls"><button id="prev-image">←</button><button id="toggle-slideshow">Play</button><button id="next-image">→</button><label>Every <select id="interval"><option value="5">5 sec</option><option value="10" selected>10 sec</option><option value="20">20 sec</option><option value="30">30 sec</option></select></label></div>
+    </section>
+  </main>
+  <footer id="player" class="player hidden">
+    <div class="now"><span class="cover">◌</span><div><small>NOW PLAYING</small><strong id="now-title">—</strong></div></div>
+    <div class="transport"><button id="shuffle" aria-label="Shuffle off" title="Shuffle">⇄</button><button id="previous" aria-label="Previous">←</button><button id="play" class="play" aria-label="Play or pause">▶</button><button id="next" aria-label="Next">→</button><button id="repeat" aria-label="Repeat off" title="Repeat">↻</button></div>
+    <div class="time"><span id="elapsed">0:00</span><input id="progress" aria-label="Playback position" type="range" min="0" max="100" value="0"><span id="duration">0:00</span></div>
+    <audio id="audio" preload="metadata"></audio>
+  </footer>
+  <script src="app.js" defer></script>
+</body>
+</html>

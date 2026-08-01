@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.playwright/
+playwright-report/
+test-results/
+data/library.json
+.DS_Store
+.coverage
+AGENTS.md
+sources/
