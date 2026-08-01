@@ -170,14 +170,8 @@ const DriveSource = (() => {
 
   function streamUrl(item) {
     if (!accessToken || expiresAt <= Date.now()) { clearToken(); throw new Error("Google Drive needs to reconnect"); }
-    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
-    if (ios) {
-      const params = new URLSearchParams({alt: "media", supportsAllDrives: "true", access_token: accessToken});
-      return `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(item.source_id)}?${params}`;
-    }
-    if (!navigator.serviceWorker?.controller) throw new Error("Inner Signal updated — refresh this page once before playing");
-    shareTokenWithWorker();
-    return new URL(`drive-media/${item.source_id}`, location.href).href;
+    const params = new URLSearchParams({alt: "media", supportsAllDrives: "true", access_token: accessToken});
+    return `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(item.source_id)}?${params}`;
   }
 
   async function scan() {

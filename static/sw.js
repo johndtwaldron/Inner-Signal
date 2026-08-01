@@ -1,4 +1,4 @@
-const CACHE = "inner-signal-v10";
+const CACHE = "inner-signal-v11";
 const OFFLINE_CACHE = "inner-signal-offline-v1";
 const SHELL = ["./", "styles.css", "enhancements.css", "offline.css", "mobile-fixes.css", "player-controls.css", "diagnostics.css", "drive-source.js", "app.js", "manifest.webmanifest", "favicon.ico", "images/apple-touch-icon.png", "images/inner-signal-default.png", "images/stasya-knight-relaxation.png"];
 let driveAccessToken = null;
