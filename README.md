@@ -106,4 +106,6 @@ A private, local-first listening room. The repository contains application code 
 
 ## GitHub Pages
 
-The `Deploy GitHub Pages` workflow publishes the static PWA shell from `static/`. GitHub Pages cannot run FastAPI, so the hosted build does not use the Mac `/api` endpoints. The next hosted milestone is browser-based Google OAuth with the read-only Drive scope, after creating a Google Cloud Web OAuth client for the final Pages URL. Never commit a client secret, access token, refresh token, or personal audio file.
+The `Deploy GitHub Pages` workflow publishes the static PWA from `static/`. GitHub Pages cannot run FastAPI, so the hosted build uses Google Identity Services and the Drive REST API directly from the browser. The OAuth client ID is intentionally public; client secrets, access tokens, refresh tokens and personal audio files must never be committed.
+
+The hosted app requests `drive.readonly` only after the user presses **Connect Google Drive**. Its short-lived access token remains in memory. It recursively indexes folder `1oEXzLFWZQxgXXvjZUGSErxJze_amg4EJ`, follows Drive shortcuts, and downloads explicitly selected offline files into that browser's Cache Storage.
