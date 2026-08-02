@@ -1,4 +1,4 @@
-const APP_VERSION="v7";
+const APP_VERSION="v8";
 const state={items:[],queue:JSON.parse(localStorage.getItem("inner-signal-queue")||"[]"),current:null,collection:"All",sort:localStorage.getItem("inner-signal-sort")||"natural-asc",session:JSON.parse(localStorage.getItem("inner-signal-session")||"null"),images:[],imageIndex:0,timer:null,shuffle:false,repeat:"off"};
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 const knownDurations=JSON.parse(localStorage.getItem("inner-signal-durations")||"{}");
@@ -40,7 +40,7 @@ async function load(refresh=false){
   finally{button.disabled=false;if(refresh)setTimeout(()=>button.textContent="↻ Refresh library",2500)}
 }
 function renderCollections(){
-  const names=["All",...new Set(playable().map(x=>x.collection))];
+  const recordings=playable(),names=["All",...new Set(recordings.map(x=>x.collection))];$("#collection-row").hidden=!recordings.length;
   $("#collections").innerHTML=names.map(n=>`<button class="${n===state.collection?'active':''}" data-collection="${n}">${n}</button>`).join("");
   $$('[data-collection]').forEach(b=>b.onclick=()=>{state.collection=b.dataset.collection;renderCollections();renderLibrary()});
   const query=state.collection==="All"?"meditation affirmation hypnosis cover art":`${state.collection} meditation album artwork`;

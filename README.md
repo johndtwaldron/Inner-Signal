@@ -116,11 +116,11 @@ On GitHub Pages, online playback uses Google Drive's authenticated media endpoin
 
 The library toolbar can download either the selected collection or the complete library, showing per-file progress and confirming the estimated total size first.
 
-## Version 7 library and playback state
+## Version 8 library and playback state
 
 The public interface displays its version in the header. The **Logs** panel records a privacy-safe event trail for library loading, playback promises, media readiness, Safari media errors, service-worker range responses and offline downloads. It intentionally excludes OAuth tokens and authenticated URLs. **Share .txt** opens the iPhone share sheet when supported, so the diagnostic file can be sent through WhatsApp or saved to Files. **Repair app cache** refreshes only the PWA shell and preserves downloaded audio.
 
-Library order defaults to natural, lower-number-first sorting (`01, 02 … 12`) within each collection, with reverse, title and newest-first controls. The player shows Offline/Preparing status, queue position and the active Guide Me session.
+Once recordings have loaded, library order defaults to natural Ascending sorting—lower numbers first when filenames are numbered—with Descending, title and newest-first controls. Collection and sort controls stay hidden while Drive is disconnected because there is no library to sort yet. The player shows Offline/Preparing status, queue position and the active Guide Me session.
 
 When the device is online, v7 prepares a selected Drive recording in persistent browser storage and displays its progress. Starting another recording does not cancel the first preparation; returning to it resumes or immediately uses the completed copy. This removes Google redirects and authenticated byte-range handling from Safari's media element.
 

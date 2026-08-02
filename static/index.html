@@ -19,10 +19,10 @@
 </head>
 <body>
   <header>
-    <div><span class="eyebrow">YOUR PRIVATE LISTENING ROOM</span><span id="client-badge" class="client-badge" hidden>MOBILE SAFARI</span><span id="version-badge" class="version-badge">v7</span><h1>Inner Signal</h1></div>
+    <div><span class="eyebrow">YOUR PRIVATE LISTENING ROOM</span><span id="client-badge" class="client-badge" hidden>MOBILE SAFARI</span><span id="version-badge" class="version-badge">v8</span><h1>Inner Signal</h1></div>
     <div class="header-actions"><button id="diagnostics-toggle" class="ghost">Logs</button><button id="connect-drive" class="primary" hidden>Connect Google Drive</button><button id="reindex" class="ghost">↻ Refresh library</button></div>
   </header>
-  <section id="diagnostics-panel" class="diagnostics-panel hidden" aria-live="polite"><div><strong>Inner Signal v7 diagnostics</strong><span>Safe to share: access tokens and playback addresses are never recorded.</span></div><div class="diagnostic-actions"><button id="share-diagnostics" class="primary">Share .txt</button><button id="copy-diagnostics" class="ghost">Copy</button><button id="repair-app" class="ghost">Repair app cache</button><button id="clear-diagnostics" class="ghost">Clear</button></div><pre id="diagnostics-output">Waiting for events…</pre></section>
+  <section id="diagnostics-panel" class="diagnostics-panel hidden" aria-live="polite"><div><strong>Inner Signal v8 diagnostics</strong><span>Safe to share: access tokens and playback addresses are never recorded.</span></div><div class="diagnostic-actions"><button id="share-diagnostics" class="primary">Share .txt</button><button id="copy-diagnostics" class="ghost">Copy</button><button id="repair-app" class="ghost">Repair app cache</button><button id="clear-diagnostics" class="ghost">Clear</button></div><pre id="diagnostics-output">Waiting for events…</pre></section>
   <main>
     <section class="hero">
       <div><p class="kicker">RETURN TO WHAT MATTERS</p><h2>Choose the signal<br>you need today.</h2><p class="intro">Your meditation and hypnosis library, calm and close at hand.</p></div>
@@ -33,7 +33,7 @@
     </nav>
     <section id="library-view" class="view active">
       <div class="toolbar"><label class="search">⌕ <input id="search" type="search" placeholder="Search your library"></label><div class="library-tools"><button id="download-all" class="ghost">↓ All offline</button><a id="art-search" class="ghost" href="https://www.google.com/search?tbm=isch&q=meditation+album+art" target="_blank" rel="noreferrer">Find visual ideas</a><div id="summary">Indexing…</div></div></div>
-      <div class="collection-row"><div id="collections" class="chips"></div><label class="sort-control">Sort <select id="sort-order"><option value="natural-asc">01 → 12</option><option value="natural-desc">12 → 01</option><option value="title-asc">Title A → Z</option><option value="newest">Newest first</option></select></label></div><div id="library" class="cards" aria-live="polite"></div>
+      <div id="collection-row" class="collection-row" hidden><div id="collections" class="chips"></div><label class="sort-control">Sort <select id="sort-order"><option value="natural-asc">Ascending</option><option value="natural-desc">Descending</option><option value="title-asc">Title A → Z</option><option value="newest">Newest first</option></select></label></div><div id="library" class="cards" aria-live="polite"></div>
     </section>
     <section id="guide-view" class="view">
       <div class="section-title"><div><span class="eyebrow">LOCAL RECOMMENDATIONS</span><h2>What do you need?</h2></div></div>
