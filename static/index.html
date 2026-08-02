@@ -16,13 +16,14 @@
   <link rel="stylesheet" href="player-controls.css">
   <link rel="stylesheet" href="diagnostics.css">
   <link rel="stylesheet" href="v7.css">
+  <link rel="stylesheet" href="v9.css">
 </head>
 <body>
   <header>
-    <div><span class="eyebrow">YOUR PRIVATE LISTENING ROOM</span><span id="client-badge" class="client-badge" hidden>MOBILE SAFARI</span><span id="version-badge" class="version-badge">v8</span><h1>Inner Signal</h1></div>
+    <div><span class="eyebrow">YOUR PRIVATE LISTENING ROOM</span><span id="client-badge" class="client-badge" hidden>MOBILE SAFARI</span><span id="version-badge" class="version-badge">v9</span><h1>Inner Signal</h1></div>
     <div class="header-actions"><button id="diagnostics-toggle" class="ghost">Logs</button><button id="connect-drive" class="primary" hidden>Connect Google Drive</button><button id="reindex" class="ghost">↻ Refresh library</button></div>
   </header>
-  <section id="diagnostics-panel" class="diagnostics-panel hidden" aria-live="polite"><div><strong>Inner Signal v8 diagnostics</strong><span>Safe to share: access tokens and playback addresses are never recorded.</span></div><div class="diagnostic-actions"><button id="share-diagnostics" class="primary">Share .txt</button><button id="copy-diagnostics" class="ghost">Copy</button><button id="repair-app" class="ghost">Repair app cache</button><button id="clear-diagnostics" class="ghost">Clear</button></div><pre id="diagnostics-output">Waiting for events…</pre></section>
+  <section id="diagnostics-panel" class="diagnostics-panel hidden" aria-live="polite"><div><strong>Inner Signal v9 diagnostics</strong><span>Safe to share: access tokens and playback addresses are never recorded.</span></div><div class="diagnostic-actions"><button id="share-diagnostics" class="primary">Share .txt</button><button id="copy-diagnostics" class="ghost">Copy</button><button id="repair-app" class="ghost">Repair app cache</button><button id="clear-diagnostics" class="ghost">Clear</button></div><pre id="diagnostics-output">Waiting for events…</pre></section>
   <main>
     <section class="hero">
       <div><p class="kicker">RETURN TO WHAT MATTERS</p><h2>Choose the signal<br>you need today.</h2><p class="intro">Your meditation and hypnosis library, calm and close at hand.</p></div>
@@ -57,15 +58,15 @@
       <div id="offline-list" class="queue"></div>
     </section>
     <section id="visuals-view" class="view">
-      <div class="section-title"><div><span class="eyebrow">VISUAL COMPANION</span><h2>Slideshow</h2></div><label class="upload">Choose images<input id="image-input" type="file" accept="image/*" multiple></label></div>
-      <div class="slideshow" id="slideshow"><div class="empty">Choose images from your Mac now. Images added to the media folder will also appear here.</div></div>
-      <div class="slideshow-controls"><button id="prev-image">←</button><button id="toggle-slideshow">Play</button><button id="next-image">→</button><label>Every <select id="interval"><option value="5">5 sec</option><option value="10" selected>10 sec</option><option value="20">20 sec</option><option value="30">30 sec</option></select></label></div>
+      <div class="section-title visual-heading"><div><span class="eyebrow">SYNCED TO YOUR MEDITATION</span><h2>Track visuals</h2><p id="visual-description" class="intro">Start a recording to display its artwork.</p></div><div class="visual-actions"><button id="leave-visuals" class="ghost">← Library</button><label class="upload">Add generic images<input id="image-input" type="file" accept="image/*" multiple></label><button id="fullscreen-visuals" class="primary">⛶ Full screen</button></div></div>
+      <div class="slideshow visual-stage" id="slideshow"><button id="exit-visuals-stage" class="visual-exit" aria-label="Exit full screen">×</button><img id="visual-image" alt="Current meditation visual" src="images/inner-signal-default.png"><div class="visual-caption"><span id="visual-source">GENERIC INNER SIGNAL</span><strong id="visual-title">Choose a recording</strong></div></div>
+      <div class="slideshow-controls"><button id="prev-image" aria-label="Previous visual">←</button><button id="toggle-slideshow">Play visuals</button><button id="next-image" aria-label="Next visual">→</button><label>Change every <select id="interval"><option value="5">5 sec</option><option value="10" selected>10 sec</option><option value="20">20 sec</option><option value="30">30 sec</option></select></label></div>
     </section>
   </main>
   <footer id="player" class="player hidden">
     <button id="close-player" class="close-player" aria-label="Hide player" title="Hide player">×</button>
     <div class="now"><span class="cover">◌</span><div><small>NOW PLAYING</small><strong id="now-title">—</strong><div id="player-context" class="player-context"></div></div></div>
-    <div class="transport"><button id="shuffle" aria-label="Shuffle off" title="Shuffle">⇄</button><button id="previous" aria-label="Previous">←</button><button id="play" class="play" aria-label="Play or pause">▶</button><button id="next" aria-label="Next">→</button><button id="repeat" aria-label="Repeat off" title="Repeat">↻</button></div>
+    <div class="transport"><button id="player-visuals" aria-label="Open track visuals" title="Track visuals">◉</button><button id="shuffle" aria-label="Shuffle off" title="Shuffle">⇄</button><button id="previous" aria-label="Previous">←</button><button id="play" class="play" aria-label="Play or pause">▶</button><button id="next" aria-label="Next">→</button><button id="repeat" aria-label="Repeat off" title="Repeat">↻</button></div>
     <div class="time"><span id="elapsed">0:00</span><input id="progress" aria-label="Playback position" type="range" min="0" max="100" value="0"><span id="duration">0:00</span></div>
     <audio id="audio" preload="metadata"></audio>
   </footer>
