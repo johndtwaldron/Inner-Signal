@@ -125,6 +125,27 @@ const DriveSource = (() => {
     return files;
   }
 
+  async function findPlayableByName(name, excludedId) {
+    const escaped = name.replaceAll("'", "\\'");
+    const fields = "files(id,name,mimeType,size,modifiedTime,videoMediaMetadata)";
+    const params = new URLSearchParams({q: `name='${escaped}' and trashed=false`, fields, pageSize: "100", spaces: "drive"});
+    const data = await driveFetch(`files?${params}`).then(r => r.json());
+    return data.files.find(file => file.id !== excludedId && file.mimeType !== "inode/symlink" && Number(file.size || 0) > 1024 && (file.mimeType.startsWith("audio/") || file.mimeType.startsWith("video/") || AUDIO.has(extension(file.name)) || VIDEO.has(extension(file.name)))) || null;
+  }
+
+  async function resolveUploadedSymlink(item) {
+    if (item.mime_type !== "inode/symlink") return item;
+    try {
+      const targetPath = await (await response(item)).text();
+      const targetName = targetPath.trim().split("/").pop() || item.filename;
+      const target = await findPlayableByName(targetName, item.source_id);
+      if (!target) return {...item, is_alias: true, broken_alias: true, alias_target: targetName};
+      return {...item, source_id: target.id, filename: target.name, mime_type: target.mimeType, size_bytes: Number(target.size || 0), duration_seconds: target.videoMediaMetadata?.durationMillis ? Number(target.videoMediaMetadata.durationMillis) / 1000 : null, modified_at: target.modifiedTime ? Date.parse(target.modifiedTime) / 1000 : item.modified_at, is_alias: true, alias_resolved: true, alias_target: targetName};
+    } catch (_) {
+      return {...item, is_alias: true, broken_alias: true};
+    }
+  }
+
   async function walk(folderId, path = [], seen = new Set()) {
     if (seen.has(folderId)) return [];
     seen.add(folderId);
@@ -195,7 +216,8 @@ const DriveSource = (() => {
   }
 
   async function scan() {
-    const items = await walk(ROOT_FOLDER_ID);
+    const walked = await walk(ROOT_FOLDER_ID);
+    const items = await Promise.all(walked.map(resolveUploadedSymlink));
     const images = new Map();
     items.filter(item => item.kind === "image").forEach(item => {
       if (!images.has(item.collection)) images.set(item.collection, []);
