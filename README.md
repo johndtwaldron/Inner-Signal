@@ -1,12 +1,30 @@
 # Inner Signal
 
-A local-first, private listening room for personal meditation, affirmation and hypnosis media. The working Mac prototype indexes files in place, plays them in the browser, supports a persistent queue, and runs image slideshows. It does not upload, copy, rename, or alter the media library.
+A lightweight, local-first listening room for meditation, affirmation, hypnosis and other personal audio kept in Google Drive. Connect one Drive folder and Inner Signal turns it into a calmer media-player library with collections, queues, offline preparation and track-synchronised visuals—without putting the audio files in this repository.
+
+The same idea can be reused with another Drive folder: authorise read-only access, set that folder's ID, and keep the source media where it already lives. Inner Signal reads and caches selected files; it does not rename, move or alter the Drive library.
 
 ## Current media inventory
 
-The latest verified library contains 38 playable recordings across the root folder, the relaxation subfolder and shortcut folders. MP3 and MP4 filenames are indexed regardless of whether they are inside a subfolder. One Google Docs pointer is intentionally ignored. No image files were present in the media folder at the time of indexing.
+The live library is discovered from Drive rather than committed to Git. MP3 and MP4 filenames are indexed regardless of whether they are inside a subfolder, Drive shortcuts are followed, and unusable pointer documents are ignored.
 
 The interface includes original AI-generated Inner Signal and relaxation artwork plus the supplied Mirror Dance Lodge image. Recordings inherit their collection artwork; unknown collections fall back to the default Inner Signal cover. **Find visual ideas** opens a focused Google Images search for the selected collection, but the app does not scrape or copy third-party images automatically.
+
+## Visual palette
+
+The Visuals view follows the recording currently playing. It may alternate that recording's assigned cover with the generic Inner Signal image and any images selected explicitly for the session. Artwork already assigned to a different collection is excluded. The stage supports timed transitions and immersive/fullscreen presentation, with a CSS fallback for Safari environments that do not grant element fullscreen.
+
+| Generic Inner Signal | Stasya Knight relaxation | Mirror Dance Lodge |
+|---|---|---|
+| ![Purple and gold Inner Signal energy around a black orb](static/images/inner-signal-default.png) | ![Purple meditation figure used for the Stasya Knight collection](static/images/stasya-knight-relaxation.png) | ![Purple and gold dancers at Mirror Dance Lodge](static/images/mirror-dance-lodge.jpg) |
+
+## Use it with a Drive folder
+
+1. Keep the personal audio in Google Drive; do not copy it into the Git repository.
+2. Create a Google Cloud OAuth web client with read-only Drive access and add the hosted site as an authorised JavaScript origin.
+3. Set `CLIENT_ID` and `ROOT_FOLDER_ID` near the top of `static/drive-source.js`.
+4. Publish the static folder over HTTPS and press **Connect Google Drive**.
+5. Inner Signal recursively discovers supported audio and folder artwork. Selected recordings are prepared in private browser storage for reliable playback and offline use.
 
 The canonical future iPhone source is the configured [Google Drive meditation folder](https://drive.google.com/drive/folders/1oEXzLFWZQxgXXvjZUGSErxJze_amg4EJ?usp=drive_link). The saved online collection is the configured [YouTube playlist](https://youtube.com/playlist?list=PLigOQIYm3Ub9rLYotDp3cBQUYhYlkP3DI&si=Icunyd8kH7N6XGxc).
 
@@ -52,7 +70,7 @@ The local-network URL uses plain HTTP. Library browsing and streaming work, but 
 - local nap, one-hour and eight-hour queue generation from a plain-language mood description
 - an optional locally saved link to a private YouTube playlist
 - a Mobile Safari/Home Screen badge and collision-free three-row mobile player
-- slideshow from indexed images or temporary image selection
+- track-synchronised visuals using the current cover plus generic/session images, with timed transitions and Safari-friendly immersive mode
 - original neon-purple, jet-black and gold collection artwork with fallback covers
 - automatic collection covers on every library refresh: a cover/artwork image inside a subfolder wins, otherwise its first image is used; PNG is preferred when duplicate PNG/AVIF artwork exists
 - image indexing for PNG, JPG/JPEG, WebP, AVIF, GIF and HEIC files
@@ -116,7 +134,7 @@ On GitHub Pages, online playback uses Google Drive's authenticated media endpoin
 
 The library toolbar can download either the selected collection or the complete library, showing per-file progress and confirming the estimated total size first.
 
-## Version 8 library and playback state
+## Version 9 visuals, library and playback state
 
 The public interface displays its version in the header. The **Logs** panel records a privacy-safe event trail for library loading, playback promises, media readiness, Safari media errors, service-worker range responses and offline downloads. It intentionally excludes OAuth tokens and authenticated URLs. **Share .txt** opens the iPhone share sheet when supported, so the diagnostic file can be sent through WhatsApp or saved to Files. **Repair app cache** refreshes only the PWA shell and preserves downloaded audio.
 

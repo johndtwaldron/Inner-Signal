@@ -46,9 +46,9 @@ def test_download_all_caches_the_visible_collection(page: Page, live_server_url)
 
 
 @pytest.mark.e2e
-def test_v8_diagnostics_and_share_are_visible(page: Page, live_server_url):
+def test_v9_diagnostics_and_share_are_visible(page: Page, live_server_url):
     page.goto(live_server_url)
-    expect(page.locator("#version-badge")).to_have_text("v8")
+    expect(page.locator("#version-badge")).to_have_text("v9")
     page.locator("#diagnostics-toggle").click()
     expect(page.locator("#diagnostics-panel")).to_be_visible()
     expect(page.locator("#diagnostics-output")).to_contain_text("snapshot")
@@ -65,3 +65,17 @@ def test_library_sort_can_be_reversed(page: Page, live_server_url):
     expect(cards.first).to_have_text("demo")
     page.locator("#sort-order").select_option("natural-desc")
     expect(cards.first).to_have_text("second")
+
+
+@pytest.mark.e2e
+def test_player_opens_synced_visuals_and_immersive_mode(page: Page, live_server_url):
+    page.goto(live_server_url)
+    first = page.locator('[data-testid="media-card"]').first
+    title = first.locator("h3").inner_text()
+    first.locator("[data-play]").click()
+    page.locator("#player-visuals").click()
+    expect(page.locator("#visuals-view")).to_have_class("view active")
+    expect(page.locator("#visual-title")).to_have_text(title)
+    page.locator("#fullscreen-visuals").click()
+    expect(page.locator("#slideshow")).to_have_class("slideshow visual-stage immersive")
+    expect(page.locator("#exit-visuals-stage")).to_be_visible()
