@@ -114,12 +114,16 @@ On GitHub Pages, online playback uses Google Drive's authenticated media endpoin
 
 “Offline” means a complete media response is stored under the site's origin in browser Cache Storage. The PWA shell is cached separately, allowing an installed Home Screen app to open without the network. Browser storage remains subject to Safari quotas and eviction; native iPhone packaging is the path to guaranteed app-managed downloads.
 
-The library toolbar can download either the selected collection or the complete library, showing per-file progress and confirming the estimated total size first. Playback source selection is synchronous with the user’s tap so iOS Safari retains the media-playback permission while the service worker resolves the online or cached response.
+The library toolbar can download either the selected collection or the complete library, showing per-file progress and confirming the estimated total size first.
 
-## Version 6 diagnostics
+## Version 7 library and playback state
 
 The public interface displays its version in the header. The **Logs** panel records a privacy-safe event trail for library loading, playback promises, media readiness, Safari media errors, service-worker range responses and offline downloads. It intentionally excludes OAuth tokens and authenticated URLs. **Share .txt** opens the iPhone share sheet when supported, so the diagnostic file can be sent through WhatsApp or saved to Files. **Repair app cache** refreshes only the PWA shell and preserves downloaded audio.
 
-When the device is online, v6 downloads the selected Drive recording with an authenticated request, displays its progress, then gives Safari a local Blob URL containing the completed audio. This deliberately trades a short initial wait and temporary memory use for much more predictable iPhone playback: Google redirects and authenticated byte-range handling are removed from the media element. Only the current buffered recording is retained in memory.
+Library order defaults to natural, lower-number-first sorting (`01, 02 … 12`) within each collection, with reverse, title and newest-first controls. The player shows Offline/Preparing status, queue position and the active Guide Me session.
 
-The cached copy is selected only when the device is actually offline and a service worker controls the page. This prevents a missing service worker from turning an otherwise playable recording into a false `NotSupportedError`.
+When the device is online, v7 prepares a selected Drive recording in persistent browser storage and displays its progress. Starting another recording does not cancel the first preparation; returning to it resumes or immediately uses the completed copy. This removes Google redirects and authenticated byte-range handling from Safari's media element.
+
+Prepared recordings use their cached copy both online and offline. If a service worker has not taken control yet, the app creates a temporary local Blob address from the same stored response. This prevents a missing service worker from turning an otherwise playable recording into a false `NotSupportedError`.
+
+Each version automatically removes older app-shell caches while preserving downloaded audio. Refresh Library also rejects stale cached alias payloads. Uploaded macOS symlinks are resolved by reading their target filename and finding the corresponding real audio file in Drive; unresolved aliases remain visible but disabled with an explanation.

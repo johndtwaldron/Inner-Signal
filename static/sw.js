@@ -1,6 +1,6 @@
-const CACHE = "inner-signal-v12";
+const CACHE = "inner-signal-v13";
 const OFFLINE_CACHE = "inner-signal-offline-v1";
-const SHELL = ["./", "styles.css", "enhancements.css", "offline.css", "mobile-fixes.css", "player-controls.css", "diagnostics.css", "drive-source.js", "app.js", "manifest.webmanifest", "favicon.ico", "images/apple-touch-icon.png", "images/inner-signal-default.png", "images/stasya-knight-relaxation.png"];
+const SHELL = ["./", "styles.css", "enhancements.css", "offline.css", "mobile-fixes.css", "player-controls.css", "diagnostics.css", "v7.css", "drive-source.js", "app.js", "manifest.webmanifest", "favicon.ico", "images/apple-touch-icon.png", "images/inner-signal-default.png", "images/stasya-knight-relaxation.png"];
 let driveAccessToken = null;
 async function report(event, data = {}) {
   const clients = await self.clients.matchAll({type: "window", includeUncontrolled: true});
