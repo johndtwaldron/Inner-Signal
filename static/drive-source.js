@@ -11,6 +11,7 @@ const DriveSource = (() => {
   const TOKEN_KEY = "inner-signal-drive-token";
   const AUTHORIZED_KEY = "inner-signal-drive-authorized";
   const objectUrls = new Map();
+  let bufferedMedia = null;
   let accessToken = null;
   let expiresAt = 0;
   let tokenClient = null;
@@ -168,6 +169,25 @@ const DriveSource = (() => {
     return url;
   }
 
+  async function bufferedUrl(item, onProgress = () => {}) {
+    if (bufferedMedia?.id === item.id) {
+      onProgress({received: item.size_bytes || 0, total: item.size_bytes || 0, percent: 100, cached: true});
+      return bufferedMedia.url;
+    }
+    const mediaResponse = await response(item);
+    if (!mediaResponse.ok) throw new Error(`Google Drive returned ${mediaResponse.status}`);
+    const total = Number(mediaResponse.headers.get("content-length")) || item.size_bytes || 0;
+    const contentType = mediaResponse.headers.get("content-type") || item.mime_type || "audio/mpeg";
+    if (!mediaResponse.body) {
+      const mediaBlob = await mediaResponse.blob(), url = URL.createObjectURL(mediaBlob);
+      if (bufferedMedia) URL.revokeObjectURL(bufferedMedia.url);bufferedMedia = {id: item.id, url};onProgress({received: mediaBlob.size, total: mediaBlob.size, percent: 100, contentType});return url;
+    }
+    const reader = mediaResponse.body.getReader(), chunks = [];let received = 0;
+    while (true) {const {done, value} = await reader.read();if (done) break;chunks.push(value);received += value.byteLength;onProgress({received, total, percent: total ? Math.min(99, Math.round(received / total * 100)) : null, contentType})}
+    const mediaBlob = new Blob(chunks, {type: contentType}), url = URL.createObjectURL(mediaBlob);
+    if (bufferedMedia) URL.revokeObjectURL(bufferedMedia.url);bufferedMedia = {id: item.id, url};onProgress({received: mediaBlob.size, total: total || mediaBlob.size, percent: 100, contentType});return url;
+  }
+
   function streamUrl(item) {
     if (!accessToken || expiresAt <= Date.now()) { clearToken(); throw new Error("Google Drive needs to reconnect"); }
     const params = new URLSearchParams({alt: "media", supportsAllDrives: "true", access_token: accessToken});
@@ -197,5 +217,5 @@ const DriveSource = (() => {
   }
 
   if (accessToken) shareTokenWithWorker();
-  return {connect, scan, response, objectUrl, streamUrl, get connected() { return Boolean(accessToken && expiresAt > Date.now()); }};
+  return {connect, scan, response, objectUrl, bufferedUrl, streamUrl, get connected() { return Boolean(accessToken && expiresAt > Date.now()); }};
 })();

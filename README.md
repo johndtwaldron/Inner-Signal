@@ -116,8 +116,10 @@ On GitHub Pages, online playback uses Google Drive's authenticated media endpoin
 
 The library toolbar can download either the selected collection or the complete library, showing per-file progress and confirming the estimated total size first. Playback source selection is synchronous with the user’s tap so iOS Safari retains the media-playback permission while the service worker resolves the online or cached response.
 
-## Version 5 diagnostics
+## Version 6 diagnostics
 
 The public interface displays its version in the header. The **Logs** panel records a privacy-safe event trail for library loading, playback promises, media readiness, Safari media errors, service-worker range responses and offline downloads. It intentionally excludes OAuth tokens and authenticated URLs. **Share .txt** opens the iPhone share sheet when supported, so the diagnostic file can be sent through WhatsApp or saved to Files. **Repair app cache** refreshes only the PWA shell and preserves downloaded audio.
 
-When the device is online, v5 always uses the direct Drive stream—even if the recording is also marked Offline. The cached copy is selected only when the device is actually offline and a service worker controls the page. This prevents a missing service worker from turning an otherwise playable Drive recording into a false `NotSupportedError`.
+When the device is online, v6 downloads the selected Drive recording with an authenticated request, displays its progress, then gives Safari a local Blob URL containing the completed audio. This deliberately trades a short initial wait and temporary memory use for much more predictable iPhone playback: Google redirects and authenticated byte-range handling are removed from the media element. Only the current buffered recording is retained in memory.
+
+The cached copy is selected only when the device is actually offline and a service worker controls the page. This prevents a missing service worker from turning an otherwise playable recording into a false `NotSupportedError`.
