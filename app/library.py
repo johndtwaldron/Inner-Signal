@@ -158,7 +158,10 @@ def scan_library(root: Path) -> list[dict]:
                 "modified_at": int(stat.st_mtime),
                 "is_alias": path.is_symlink() or alias_parent,
                 "tags": sorted(
-                    set(infer_tags(clean_title(path), collection, duration) + ([creator] if creator else []))
+                    set(
+                        infer_tags(clean_title(path), collection, duration)
+                        + ([creator] if creator else [])
+                    )
                 ),
             }
         )
