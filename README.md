@@ -72,7 +72,8 @@ The local-network URL uses plain HTTP. Library browsing and streaming work, but 
 - a Mobile Safari/Home Screen badge and collision-free three-row mobile player
 - track-synchronised visuals using the current cover plus generic/session images, with timed transitions and Safari-friendly immersive mode
 - original neon-purple, jet-black and gold collection artwork with fallback covers
-- automatic collection covers on every library refresh: a cover/artwork image inside a subfolder wins, otherwise its first image is used; PNG is preferred when duplicate PNG/AVIF artwork exists
+- automatic album covers on every library refresh: artwork is resolved only within the recording's immediate album folder, so sibling albums cannot override one another; PNG is preferred when duplicate PNG/AVIF artwork exists
+- nested creator/album folders: for `Summer.Soderstrom/Rooted/...`, `Rooted` is the album and `Summer Soderstrom` is retained as the shared creator tag
 - image indexing for PNG, JPG/JPEG, WebP, AVIF, GIF and HEIC files
 - per-recording offline downloads with live percentage progress and removal
 - offline-library storage usage, allowance and percentage reporting
@@ -134,7 +135,7 @@ On GitHub Pages, online playback uses Google Drive's authenticated media endpoin
 
 The library toolbar can download either the selected collection or the complete library, showing per-file progress and confirming the estimated total size first.
 
-## Version 9 visuals, library and playback state
+## Version 10 visuals, hierarchy, library and playback state
 
 The public interface displays its version in the header. The **Logs** panel records a privacy-safe event trail for library loading, playback promises, media readiness, Safari media errors, service-worker range responses and offline downloads. It intentionally excludes OAuth tokens and authenticated URLs. **Share .txt** opens the iPhone share sheet when supported, so the diagnostic file can be sent through WhatsApp or saved to Files. **Repair app cache** refreshes only the PWA shell and preserves downloaded audio.
 

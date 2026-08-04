@@ -66,3 +66,28 @@ def test_subfolder_png_is_preferred_over_duplicate_avif_cover(tmp_path: Path):
     assert {item["kind"] for item in items} == {"audio", "image"}
     assert audio["collection"] == "STASYA.KNIGHT.RELAXATION."
     assert audio["cover_id"] == png["id"]
+
+
+def test_nested_creator_folders_become_separate_albums_with_their_own_covers(tmp_path: Path):
+    creator = tmp_path / "Summer.Soderstrom"
+    insight = creator / "InsightTimer"
+    rooted = creator / "Rooted - A Nervous System Reset Collection"
+    insight.mkdir(parents=True)
+    rooted.mkdir()
+    (insight / "Heart Chakra.mp3").write_bytes(b"audio")
+    (insight / "summer.webp").write_bytes(b"image")
+    (rooted / "01 - Self Love.mp3").write_bytes(b"audio")
+    (rooted / "rooted.jpg").write_bytes(b"image")
+
+    items = scan_library(tmp_path)
+    insight_audio = next(item for item in items if item["filename"] == "Heart Chakra.mp3")
+    rooted_audio = next(item for item in items if item["filename"] == "01 - Self Love.mp3")
+    insight_cover = next(item for item in items if item["filename"] == "summer.webp")
+    rooted_cover = next(item for item in items if item["filename"] == "rooted.jpg")
+
+    assert insight_audio["collection"] == "InsightTimer"
+    assert rooted_audio["collection"] == "Rooted - A Nervous System Reset Collection"
+    assert "Summer Soderstrom" in insight_audio["tags"]
+    assert "Summer Soderstrom" in rooted_audio["tags"]
+    assert insight_audio["cover_id"] == insight_cover["id"]
+    assert rooted_audio["cover_id"] == rooted_cover["id"]

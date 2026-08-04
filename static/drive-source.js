@@ -26,6 +26,7 @@ const DriveSource = (() => {
 
   const extension = name => name.includes(".") ? name.split(".").pop().toLowerCase() : "";
   const cleanTitle = name => name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ").replace(/\s+/g, " ").trim();
+  const displayFolderName = name => name.replace(/[._]/g, " ").replace(/\s+/g, " ").trim();
   const stableId = id => `drive-${id}`;
   const rootCollection = name => {
     const text = cleanTitle(name).toLowerCase();
@@ -39,11 +40,11 @@ const DriveSource = (() => {
     ];
     return rules.find(([, words]) => words.some(word => text.includes(word)))?.[0] || "Other Meditations";
   };
-  const tags = (title, collection) => {
+  const tags = (title, collection, creator = null) => {
     const text = `${title} ${collection}`.toLowerCase();
     const rules = {sleep:["sleep","dream","night","rest"],calm:["calm","anxiety","safe","reiki"],confidence:["confidence","self esteem","worthy"],healing:["heal","wound","abandon","rejected"],affirmations:["affirmation","i am"],hypnosis:["hypnosis","hypnotic"]};
     const found = Object.entries(rules).filter(([, words]) => words.some(word => text.includes(word))).map(([tag]) => tag);
-    return found.length ? found : ["general"];
+    return [...new Set([...(found.length ? found : ["general"]), ...(creator ? [creator] : [])])].sort();
   };
 
   function ready() {
@@ -165,15 +166,18 @@ const DriveSource = (() => {
       const ext = extension(file.name);
       const kind = AUDIO.has(ext) || file.mimeType.startsWith("audio/") ? "audio" : VIDEO.has(ext) || file.mimeType.startsWith("video/") ? "video" : IMAGE.has(ext) || file.mimeType.startsWith("image/") ? "image" : null;
       if (!kind) continue;
-      const collection = path[0] || rootCollection(file.name);
+      const nestedAlbum = path.length >= 2;
+      const collection = nestedAlbum ? displayFolderName(path.at(-1)) : path[0] || rootCollection(file.name);
+      const creator = nestedAlbum ? displayFolderName(path[0]) : null;
+      const artworkGroup = path.join("/");
       const title = cleanTitle(file.name);
       output.push({
         id: stableId(file.id), source_id: file.id, title, filename: file.name,
-        relative_path: [...path, file.name].join("/"), collection, kind,
+        relative_path: [...path, file.name].join("/"), collection, creator, artwork_group: artworkGroup, kind,
         mime_type: file.mimeType, size_bytes: Number(file.size || 0),
         duration_seconds: file.videoMediaMetadata?.durationMillis ? Number(file.videoMediaMetadata.durationMillis) / 1000 : null,
         modified_at: file.modifiedTime ? Date.parse(file.modifiedTime) / 1000 : null,
-        is_alias: isAlias, tags: tags(title, collection), cover_id: null,
+        is_alias: isAlias, tags: tags(title, collection, creator), cover_id: null,
       });
     }
     return output;
@@ -220,8 +224,8 @@ const DriveSource = (() => {
     const items = await Promise.all(walked.map(resolveUploadedSymlink));
     const images = new Map();
     items.filter(item => item.kind === "image").forEach(item => {
-      if (!images.has(item.collection)) images.set(item.collection, []);
-      images.get(item.collection).push(item);
+      if (!images.has(item.artwork_group)) images.set(item.artwork_group, []);
+      images.get(item.artwork_group).push(item);
     });
     for (const collectionImages of images.values()) {
       collectionImages.sort((a, b) => {
@@ -230,7 +234,7 @@ const DriveSource = (() => {
       });
       const cover = collectionImages[0];
       try { cover.cover_url = await objectUrl(cover); } catch (_) { /* retain fallback art */ }
-      items.filter(item => item.collection === cover.collection).forEach(item => {
+      items.filter(item => item.artwork_group === cover.artwork_group).forEach(item => {
         item.cover_id = cover.id;
         item.cover_url = cover.cover_url;
       });
