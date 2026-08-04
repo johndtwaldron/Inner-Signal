@@ -1,4 +1,4 @@
-const APP_VERSION="v9";
+const APP_VERSION="v10";
 const state={items:[],queue:JSON.parse(localStorage.getItem("inner-signal-queue")||"[]"),current:null,collection:"All",sort:localStorage.getItem("inner-signal-sort")||"natural-asc",session:JSON.parse(localStorage.getItem("inner-signal-session")||"null"),images:[],customImages:[],imageIndex:0,timer:null,shuffle:false,repeat:"off"};
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 const knownDurations=JSON.parse(localStorage.getItem("inner-signal-durations")||"{}");

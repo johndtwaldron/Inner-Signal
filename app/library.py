@@ -100,6 +100,22 @@ def infer_root_collection(path: Path) -> str:
     return "Other Meditations"
 
 
+def display_folder_name(name: str) -> str:
+    """Turn folder-style separators into a readable creator or album label."""
+    return " ".join(name.replace(".", " ").replace("_", " ").split())
+
+
+def hierarchy(relative: str, path: Path) -> tuple[str, str | None, str]:
+    """Return album, optional creator, and the exact folder used for artwork."""
+    parts = relative.split("/")
+    folders = parts[:-1]
+    if len(folders) >= 2:
+        return display_folder_name(folders[-1]), display_folder_name(folders[0]), "/".join(folders)
+    if folders:
+        return folders[0], None, folders[0]
+    return infer_root_collection(path), None, ""
+
+
 def scan_library(root: Path) -> list[dict]:
     if not root.is_dir():
         return []
@@ -122,9 +138,7 @@ def scan_library(root: Path) -> list[dict]:
             kind = "audio"
         stat = path.stat()
         duration = duration_seconds(path) if kind != "image" else None
-        collection = (
-            relative.split("/", 1)[0] if "/" in relative else infer_root_collection(path)
-        )
+        collection, creator, artwork_group = hierarchy(relative, path)
         alias_parent = any(
             parent.is_symlink() for parent in path.parents if parent != root.parent
         )
@@ -135,19 +149,23 @@ def scan_library(root: Path) -> list[dict]:
                 "filename": path.name,
                 "relative_path": relative,
                 "collection": collection,
+                "creator": creator,
+                "artwork_group": artwork_group,
                 "kind": kind,
                 "mime_type": mimetypes.guess_type(path.name)[0] or "application/octet-stream",
                 "size_bytes": stat.st_size,
                 "duration_seconds": duration,
                 "modified_at": int(stat.st_mtime),
                 "is_alias": path.is_symlink() or alias_parent,
-                "tags": infer_tags(clean_title(path), collection, duration),
+                "tags": sorted(
+                    set(infer_tags(clean_title(path), collection, duration) + ([creator] if creator else []))
+                ),
             }
         )
     images_by_collection: dict[str, list[dict]] = {}
     for item in items:
         if item["kind"] == "image":
-            images_by_collection.setdefault(item["collection"], []).append(item)
+            images_by_collection.setdefault(item["artwork_group"], []).append(item)
     for collection_images in images_by_collection.values():
         collection_images.sort(
             key=lambda item: (
@@ -160,6 +178,6 @@ def scan_library(root: Path) -> list[dict]:
             )
         )
     for item in items:
-        covers = images_by_collection.get(item["collection"], [])
+        covers = images_by_collection.get(item["artwork_group"], [])
         item["cover_id"] = covers[0]["id"] if covers else None
     return items

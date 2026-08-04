@@ -46,9 +46,9 @@ def test_download_all_caches_the_visible_collection(page: Page, live_server_url)
 
 
 @pytest.mark.e2e
-def test_v9_diagnostics_and_share_are_visible(page: Page, live_server_url):
+def test_v10_diagnostics_and_share_are_visible(page: Page, live_server_url):
     page.goto(live_server_url)
-    expect(page.locator("#version-badge")).to_have_text("v9")
+    expect(page.locator("#version-badge")).to_have_text("v10")
     page.locator("#diagnostics-toggle").click()
     expect(page.locator("#diagnostics-panel")).to_be_visible()
     expect(page.locator("#diagnostics-output")).to_contain_text("snapshot")
